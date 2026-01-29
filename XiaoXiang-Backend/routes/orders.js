@@ -1,5 +1,5 @@
 import express from 'express';
-import Order from '../models/Order.js';
+import Order from '../model/Order.js';
 
 const router = express.Router();
 
@@ -15,3 +15,4 @@ router.get('/my', async (req, res) => {
 });
 
 export default router;
+
