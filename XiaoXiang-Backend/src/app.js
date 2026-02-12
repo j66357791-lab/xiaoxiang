@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import mongoose from 'mongoose'; // 👈 引入mongoose用于健康检查
+import mongoose from 'mongoose';
 import { logger } from './common/middlewares/logger.js';
 import { errorHandler, notFoundHandler } from './common/middlewares/error.js';
 import { cacheMiddleware } from './common/middlewares/cache.js';
@@ -17,14 +17,8 @@ import taskTypeRoutes from './modules/task-types/taskType.routes.js';
 import paymentRoutes from './modules/payments/paymentMethod.routes.js';
 import withdrawalRoutes from './modules/withdrawals/withdrawal.routes.js';
 import transactionRoutes from './modules/transactions/transaction.routes.js';
-
-// 👇 新增：引入审核模块路由 (团长升级审核)
 import auditRoutes from './modules/audits/audit.routes.js';
-
-// 👇 新增：引入公告模块路由
 import announcementRoutes from './modules/announcement/announcement.routes.js';
-
-// 👇 新增：引入版本检查路由
 import versionRoutes from './modules/version/version.routes.js';
 
 // 👇👇👇 【新增】引入通知模块路由 👇👇👇
@@ -129,7 +123,6 @@ app.get('/api/health', (req, res) => {
   res.json(healthcheck);
 });
 
-// 👇 Docker/Zeabur 专用的健康检查端点
 app.get('/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
   console.log(`[DockerHealth] 🐳 Docker健康检查，数据库状态: ${dbState}`);
@@ -152,7 +145,6 @@ app.get('/health', (req, res) => {
   }
 });
 
-// 👇 详细健康检查（包含所有组件）
 app.get('/health-check', async (req, res) => {
   console.log(`[HealthCheck] 🩺 详细健康检查请求`);
   
@@ -164,7 +156,6 @@ app.get('/health-check', async (req, res) => {
   };
   
   try {
-    // 数据库连接检查
     const dbState = mongoose.connection.readyState;
     healthcheck.checks.database = {
       status: dbState === 1 ? 'healthy' : 'unhealthy',
@@ -172,7 +163,6 @@ app.get('/health-check', async (req, res) => {
       description: dbState === 1 ? '数据库连接正常' : '数据库连接异常'
     };
     
-    // 内存使用检查
     const memoryUsage = process.memoryUsage();
     const memoryPercentage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
     healthcheck.checks.memory = {
@@ -183,7 +173,6 @@ app.get('/health-check', async (req, res) => {
       description: memoryPercentage < 90 ? '内存使用正常' : '内存使用过高'
     };
     
-    // 如果数据库连接异常，整体状态为503
     if (dbState !== 1) {
       healthcheck.message = 'Database connection issue';
       console.error(`[HealthCheck] ❌ 数据库连接异常: ${dbState}`);
@@ -202,38 +191,31 @@ app.get('/health-check', async (req, res) => {
 });
 
 // =====================
-// API 路由 (应用缓存优化)
+// API 路由
 // =====================
 
 console.log('[App] 🛣️  配置API路由...');
 
-// 挂载用户到 app（兼容旧代码）
 import User from './modules/users/user.model.js';
 app.set('User', User);
 
-// 业务路由
 console.log('[App] 📡 注册认证路由: /api/auth');
 app.use('/api/auth', authRoutes);
 
-// 👇 用户路由：设置 5 秒短缓存
-console.log('[App] 👤 注册用户路由: /api/users (缓存: 5秒)');
+console.log('[App] 👤 注册用户路由: /api/users');
 app.use('/api/users', cacheMiddleware(5), userRoutes);
 
-// 👇 审核路由：注册团长升级审核路由 (无需缓存)
 console.log('[App] 📋 注册审核路由: /api/audits');
 app.use('/api/audits', auditRoutes);
 
-// 👇 任务路由：设置 30 秒长缓存
-console.log('[App] 📋 注册任务路由: /api/jobs (缓存: 30秒)');
+console.log('[App] 📋 注册任务路由: /api/jobs');
 app.use('/api/jobs', cacheMiddleware(30), jobRoutes);
 
 console.log('[App] 📦 注册订单路由: /api/orders');
 app.use('/api/orders', orderRoutes);
 
-// 👇 分类路由：设置 60 秒超长缓存
-console.log('[App] 🏷️  注册分类路由: /api/categories (缓存: 60秒)');
+console.log('[App] 🏷️  注册分类路由: /api/categories');
 app.use('/api/categories', cacheMiddleware(60), categoryRoutes);
-console.log('[App] 🏷️  注册管理分类路由: /api/admin/categories');
 app.use('/api/admin/categories', categoryRoutes);
 
 console.log('[App] 🔧 注册任务类型路由: /api/task-types');
@@ -248,11 +230,9 @@ app.use('/api/withdrawals', withdrawalRoutes);
 console.log('[App] 📊 注册交易路由: /api/transactions');
 app.use('/api/transactions', transactionRoutes);
 
-// 👇 新增：公告路由
 console.log('[App] 📢 注册公告路由: /api/announcements');
 app.use('/api/announcements', announcementRoutes);
 
-// 👇 新增：版本检查路由
 console.log('[App] 📌 注册版本检查路由: /api/version');
 app.use('/api/version', versionRoutes);
 
@@ -271,12 +251,10 @@ app.get('/api/debug/routes', (req, res) => {
   const getRoutes = (stack, basePath = '') => {
     stack.forEach((middleware) => {
       if (middleware.route) {
-        // 普通路由
         const path = basePath + middleware.route.path;
         const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase());
         routes.push({ path, methods });
       } else if (middleware.name === 'router') {
-        // 路由器
         const routerPath = basePath + (middleware.regexp.toString().replace(/^\/\^\\/, '').replace(/\\\/\?\(\?=\/|\$\)\/$/g, '') || '');
         getRoutes(middleware.handle.stack, routerPath);
       }
@@ -299,10 +277,7 @@ app.get('/api/debug/routes', (req, res) => {
 
 console.log('[App] ⚠️  配置错误处理中间件...');
 
-// 404 处理
 app.use(notFoundHandler);
-
-// 全局错误处理（必须在最后）
 app.use(errorHandler);
 
 console.log('[App] ✅ Express应用初始化完成');
