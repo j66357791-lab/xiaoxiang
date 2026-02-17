@@ -88,42 +88,18 @@ export class OrderService {
   }
 
   /**
-   * 用户提交订单（完成任务）
+   * 用户提交订单
    */
   static async submitOrder(orderId, userId, description, evidencePaths, userRole = 'user') {
-    console.log('[Service] submitOrder 开始执行');
-    console.log('[Service] 参数:', { orderId, userId, userRole });
-
     const order = await Order.findById(orderId).populate('userId');
-    
-    console.log('[Service] 查询订单结果:', order ? '找到订单' : '订单不存在');
-    
     if (!order) throw new NotFoundError('订单不存在');
 
-    // 🔧 详细调试
     const orderUserId = order.userId?._id?.toString() || order.userId?.toString();
-    
-    console.log('========================================');
-    console.log('[Service] 权限对比详情:');
-    console.log('  订单ID:', orderId);
-    console.log('  订单所属用户ID (orderUserId):', orderUserId);
-    console.log('  请求用户ID (userId):', userId);
-    console.log('  userId type:', typeof userId);
-    console.log('  order.userId 原始值:', order.userId);
-    console.log('  order.userId._id:', order.userId?._id);
-    console.log('  对比结果:', orderUserId === userId.toString());
-    console.log('========================================');
-
     const isOwner = orderUserId === userId.toString();
     const isAdmin = userRole === 'admin' || userRole === 'superAdmin';
 
-    if (!isOwner && !isAdmin) {
-      console.log('[Service] ❌ 权限验证失败!');
-      throw new BadRequestError('无权操作该订单');
-    }
+    if (!isOwner && !isAdmin) throw new BadRequestError('无权操作该订单');
     
-    console.log('[Service] ✅ 权限验证通过');
-
     if (order.status !== 'Applied') {
       throw new BadRequestError('只有已接单的订单可以提交');
     }
@@ -141,8 +117,6 @@ export class OrderService {
     order.evidence = evidencePaths;
     order.status = 'Submitted';
     await order.save();
-    
-    console.log('[Service] 订单提交成功');
     return order;
   }
 
@@ -191,7 +165,7 @@ export class OrderService {
   }
 
   /**
-   * 更新订单状态
+   * 更新订单状态（管理员）- 🔧 修复：更灵活的状态流转
    */
   static async updateOrderStatus(orderId, status, options = {}) {
     const { reason = '', reviewedBy = null, paymentProof = '', paymentNote = '' } = options;
@@ -203,10 +177,18 @@ export class OrderService {
       throw new BadRequestError('无效的订单状态');
     }
 
+    // 最终状态不可更改
+    const finalStatuses = ['Completed', 'Cancelled', 'Rejected'];
+    if (finalStatuses.includes(order.status)) {
+      throw new BadRequestError(`订单已${order.status === 'Completed' ? '完成' : order.status === 'Cancelled' ? '取消' : '驳回'}，无法更改`);
+    }
+
+    // 🔧 修复：简化状态流转规则，管理员可以灵活操作
+    // 用户端仍需按正常流程，但管理员可以跳跃
     const allowedTransitions = {
-      'Applied': ['Submitted', 'Cancelled'],
-      'Submitted': ['Reviewing', 'Cancelled'],
-      'Reviewing': ['PendingPayment', 'Rejected'],
+      'Applied': ['Submitted', 'Cancelled', 'Reviewing', 'PendingPayment', 'Completed', 'Rejected'], // 管理员可直接操作
+      'Submitted': ['Reviewing', 'PendingPayment', 'Completed', 'Rejected', 'Cancelled'], // 🔧 新增：可直接审批
+      'Reviewing': ['PendingPayment', 'Completed', 'Rejected', 'Cancelled'], // 🔧 新增：可直接完成
       'PendingPayment': ['Completed', 'Cancelled'],
       'Completed': [],
       'Cancelled': [],
@@ -218,22 +200,25 @@ export class OrderService {
       throw new BadRequestError(`状态流转错误：不能从 ${order.status} 转换到 ${status}`);
     }
 
+    // 根据状态处理特殊逻辑
     switch (status) {
       case 'Completed':
+        // 🔧 防止重复打款
         if (order.status !== 'Completed') {
           const amount = order.jobSnapshot.amount;
           console.log(`[OrderService] 触发打款: 订单 ${orderId}, 金额 ¥${amount}`);
 
           try {
-            await UserService.addBalance(order.userId._id, amount, order._id, '兼职任务佣金发放');
-            await UserService.addExpAndCredit(order.userId._id, amount, 1);
-            await UserService.processOrderCommission(order.userId._id, order._id, amount);
+            const targetUserId = order.userId._id || order.userId;
+            await UserService.addBalance(targetUserId, amount, order._id, '兼职任务佣金发放');
+            await UserService.addExpAndCredit(targetUserId, amount, 1);
+            await UserService.processOrderCommission(targetUserId, order._id, amount);
             
             order.paymentProof = paymentProof;
             order.paymentNote = paymentNote;
           } catch (balanceErr) {
-            console.error('[OrderService] 加款失败:', balanceErr);
-            throw new BadRequestError('加款失败: ' + balanceErr.message);
+            console.error('[OrderService] 打款失败:', balanceErr);
+            throw new BadRequestError('打款失败: ' + balanceErr.message);
           }
         }
         break;
@@ -248,6 +233,7 @@ export class OrderService {
         break;
 
       case 'Reviewing':
+      case 'PendingPayment':
         if (reviewedBy) order.reviewedBy = reviewedBy;
         break;
     }
@@ -255,6 +241,7 @@ export class OrderService {
     order.status = status;
     await order.save();
     
+    console.log(`[OrderService] 订单状态更新成功: ${order.orderNumber} -> ${status}`);
     return await this.getOrderById(orderId);
   }
 
