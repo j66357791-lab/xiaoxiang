@@ -1,6 +1,5 @@
 // src/modules/gamescaiquan/gamescaiquan.controller.js
 import { success, error, paginated } from '../../../common/utils/response.js';
-import { GameScaiquanService } from './gamescaiquan.service.js';
 import { asyncHandler } from '../../../common/utils/asyncHandler.js';
 
 export class GameScaiquanController {
@@ -82,3 +81,4 @@ export class GameScaiquanController {
     return success(res, stats, '获取手续费统计成功');
   });
 }
+
