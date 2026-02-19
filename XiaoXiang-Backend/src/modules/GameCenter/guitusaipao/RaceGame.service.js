@@ -52,13 +52,11 @@ export class RaceGameManager {
   static async initialize() {
     console.log('[RaceGame] 🎮 初始化龟兔赛跑游戏服务...');
     
-    // 清理未完成的比赛
     const pendingRace = await Race.findOne({ status: { $ne: 'settled' } }).sort({ startedAt: -1 });
     if (pendingRace) {
       await Race.findByIdAndUpdate(pendingRace._id, { status: 'settled' });
     }
     
-    // 开始第一局
     await this.startNewRace();
   }
   
@@ -67,12 +65,10 @@ export class RaceGameManager {
    */
   static async startNewRace() {
     try {
-      // 获取下一局序号
       const lastRace = await Race.findOne().sort({ raceNumber: -1 });
       const raceNumber = lastRace ? lastRace.raceNumber + 1 : 1;
       const raceId = `RACE-${Date.now()}`;
       
-      // 创建比赛记录
       const race = await Race.create({
         raceId,
         raceNumber,
@@ -80,17 +76,14 @@ export class RaceGameManager {
         startedAt: new Date(),
       });
       
-      // 预生成比赛结果和动画帧（在停止下注时就生成好）
       const { events, winner, turtleFinalPos, rabbitFinalPos, animationFrames } = 
         this.generateRaceResult();
       
-      // 重置投注池统计
       const poolStats = { 
         turtle: { amount: 0, count: 0 }, 
         rabbit: { amount: 0, count: 0 } 
       };
       
-      // 更新全局状态
       gameState = {
         currentRace: race,
         phase: GAME_PHASES.BETTING,
@@ -108,7 +101,6 @@ export class RaceGameManager {
       console.log(`[RaceGame] 🏁 第 ${raceNumber} 局开始，下注阶段 ${PHASE_DURATIONS.BETTING / 1000} 秒`);
       console.log(`[RaceGame] 🎲 预生成结果: 胜者=${winner}`);
       
-      // 广播下注阶段开始
       broadcast('race:betting_start', {
         raceId,
         raceNumber,
@@ -117,7 +109,6 @@ export class RaceGameManager {
         betOptions: BET_OPTIONS,
       });
       
-      // 设置下注阶段结束定时器
       phaseTimer = setTimeout(() => this.startRacingPhase(), PHASE_DURATIONS.BETTING);
       
     } catch (error) {
@@ -127,13 +118,17 @@ export class RaceGameManager {
   }
   
   /**
-   * 生成比赛结果和动画帧（5秒动画）
+   * 生成比赛结果和动画帧（纯50%概率）
    */
   static generateRaceResult() {
     const events = [];
-    const raceDuration = PHASE_DURATIONS.RACING; // 5000ms
-    const frameInterval = 50; // 每50ms一帧
+    const raceDuration = PHASE_DURATIONS.RACING;
+    const frameInterval = 50;
     const totalFrames = raceDuration / frameInterval;
+    
+    // ========== 核心：纯50%概率决定胜者 ==========
+    const winner = Math.random() < 0.5 ? 'turtle' : 'rabbit';
+    console.log(`[RaceGame] 🎲 随机胜者: ${winner} (50%概率)`);
     
     // 生成 1-2 个随机事件
     const eventCount = 1 + Math.floor(Math.random() * 2);
@@ -155,7 +150,6 @@ export class RaceGameManager {
     for (let frame = 0; frame <= totalFrames; frame++) {
       const currentTime = frame * frameInterval;
       
-      // 检查事件触发
       while (eventIndex < events.length && events[eventIndex].triggeredAt <= currentTime) {
         const evt = events[eventIndex];
         if (evt.target === 'turtle') turtleMult = evt.multiplier;
@@ -164,7 +158,6 @@ export class RaceGameManager {
         eventIndex++;
       }
       
-      // 计算位置增量
       const deltaTime = frameInterval / 1000;
       turtlePos = Math.min(100, turtlePos + BASE_SPEED.turtle * deltaTime * turtleMult);
       rabbitPos = Math.min(100, rabbitPos + BASE_SPEED.rabbit * deltaTime * rabbitMult);
@@ -180,13 +173,33 @@ export class RaceGameManager {
       if (turtlePos >= 100 || rabbitPos >= 100) break;
     }
     
-    const winner = turtlePos >= rabbitPos ? 'turtle' : 'rabbit';
+    // ========== 强制设置胜者结果 ==========
+    let finalTurtle = Math.min(turtlePos, 100);
+    let finalRabbit = Math.min(rabbitPos, 100);
+    
+    if (winner === 'turtle') {
+      // 乌龟胜：乌龟100，兔子最多99
+      finalTurtle = 100;
+      finalRabbit = Math.min(finalRabbit, 99);
+    } else {
+      // 兔子胜：兔子100，乌龟最多99
+      finalRabbit = 100;
+      finalTurtle = Math.min(finalTurtle, 99);
+    }
+    
+    // 添加最后一帧
+    animationFrames.push({
+      time: raceDuration,
+      turtle: finalTurtle,
+      rabbit: finalRabbit,
+      event: null
+    });
     
     return {
       events,
       winner,
-      turtleFinalPos: Math.min(turtlePos, 100),
-      rabbitFinalPos: Math.min(rabbitPos, 100),
+      turtleFinalPos: finalTurtle,
+      rabbitFinalPos: finalRabbit,
       animationFrames,
     };
   }
@@ -204,7 +217,6 @@ export class RaceGameManager {
     
     await Race.findByIdAndUpdate(gameState.currentRace._id, { status: 'racing' });
     
-    // 广播比赛开始（包含完整动画帧）
     broadcast('race:racing_start', {
       raceId: gameState.currentRace.raceId,
       raceNumber: gameState.currentRace.raceNumber,
@@ -236,7 +248,6 @@ export class RaceGameManager {
     gameState.phase = GAME_PHASES.SETTLING;
     const winner = gameState.winner;
     
-    // 更新比赛记录
     await Race.findByIdAndUpdate(gameState.currentRace._id, {
       status: 'settled',
       endedAt: new Date(),
@@ -250,18 +261,14 @@ export class RaceGameManager {
       poolStats: gameState.poolStats,
     });
     
-    // 创建历史记录流水
     await this.createRaceHistory(gameState.currentRace, winner);
     
-    // 结算所有下注
     const settlementResult = await this.settleBets(gameState.currentRace.raceId, winner);
     
-    // 更新比赛统计
     await Race.findByIdAndUpdate(gameState.currentRace._id, {
       settlementStats: settlementResult,
     });
     
-    // 广播全局结果
     broadcast('race:settled', {
       raceId: gameState.currentRace.raceId,
       raceNumber: gameState.currentRace.raceNumber,
@@ -273,7 +280,6 @@ export class RaceGameManager {
     
     console.log(`[RaceGame] ✅ 第 ${gameState.currentRace.raceNumber} 局结算完成，胜者: ${winner}`);
     
-    // 5秒后开始下一局
     phaseTimer = setTimeout(() => this.startNewRace(), PHASE_DURATIONS.SETTLING);
   }
   
@@ -435,7 +441,6 @@ export class RaceGameManager {
         status: 'completed',
       }], { session });
       
-      // 更新投注池统计
       gameState.poolStats[side].amount += amount;
       gameState.poolStats[side].count += 1;
       

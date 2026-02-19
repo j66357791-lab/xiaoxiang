@@ -20,9 +20,10 @@ export const ODDS = {
 };
 
 // 基础速度（每秒前进百分比，根据5秒比赛时间调整）
+// 注意：胜者由随机概率决定，速度只影响动画效果
 export const BASE_SPEED = {
-  turtle: 18,    // 乌龟基础速度稍慢
-  rabbit: 22,    // 兔子基础速度稍快
+  turtle: 20,
+  rabbit: 20,
 };
 
 // 随机事件配置
