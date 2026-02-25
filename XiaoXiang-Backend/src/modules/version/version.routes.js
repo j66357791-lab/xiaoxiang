@@ -7,22 +7,16 @@ router.get('/', (req, res) => {
   res.json({
     success: true,
     data: {
-      latestVersion: '1.0.2',
-      downloadUrl: 'https://expo.dev/artifacts/eas/acbb3fc5-1bcc-4410-afc8-ce839fa990fa',
-      updateMessage: `【v1.0.2 更新内容】
+      latestVersion: '1.1.1',
+      downloadUrl: 'https://expo.dev/artifacts/eas/0c2250ac-f6e1-4b35-ad3f-b9fcbec73697',
+      updateMessage: `【v1.1.1 更新内容】
 
-1. 优化团长体系：新注册团长默认为一级团长，邀请成员即可享受相应权益；重构UI设计，新增详细数据展示，优化查询功能
-
-2. 修复钱包提现明细显示异常问题，优化钱包页面操作流程，提升账单核验便捷性
-
-3. 修复应用图标及名称显示问题
-
-4. 优化底部导航栏布局，将订单列表调整为休闲中心，为后续生态拓展奠定基础；同步优化个人中心UI设计及功能模块
-
-5. 优化消息推送功能，任务接单成功后将收到实时通知提醒`,
+1. 优化休闲中心功能，拓展体验卡牌回合游戏仙侠客栈
+2. 新增积分、小象币玩法
+3. 修复已知问题`,
       forceUpdate: false,
       platform: {
-        android: 'https://expo.dev/artifacts/eas/acbb3fc5-1bcc-4410-afc8-ce839fa990fa',
+        android: 'https://expo.dev/artifacts/eas/0c2250ac-f6e1-4b35-ad3f-b9fcbec73697',
         ios: 'https://expo.dev/artifacts/eas/xxxxx'
       }
     }
