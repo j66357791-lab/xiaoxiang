@@ -26,7 +26,7 @@ import notificationRoutes from './modules/notifications/notification.routes.js';
 import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
-import assetRoutes from './modules/asset/asset.routes.js';
+import assetRoutes from './modules/asset/asset.routes.js'; // 🔥 恢复：资产管理路由
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -61,30 +61,20 @@ console.log('[App] ⚙️  配置中间件...');
 // 日志中间件
 app.use(logger);
 
-// 🔥🔥🔥 CORS 配置 - 手动模式（解决所有跨域问题）🔥🔥🔥
-app.use((req, res, next) => {
-  // 允许所有来源
-  res.header('Access-Control-Allow-Origin', '*');
-  
-  // 允许的方法
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  
-  // 允许的头部
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-  
-  // 预检请求缓存时间（24小时）
-  res.header('Access-Control-Max-Age', '86400');
-  
-  // 如果是预检请求，直接返回 200
-  if (req.method === 'OPTIONS') {
-    console.log(`[CORS] ✅ 预检请求通过: ${req.path}`);
-    return res.status(200).end();
-  }
-  
-  next();
-});
-
-console.log(`[App] 🌍 CORS配置: 手动模式 - 允许所有来源`);
+// 🔥 CORS 配置 - 动态反射模式（修复登录跨域问题）
+const corsOptions = {
+  origin: (origin, callback) => {
+    // 允许无 Origin 的请求（App、Postman、服务器内部调用）
+    if (!origin) return callback(null, true);
+    // 允许所有带 Origin 的请求，并回显 Origin（支持 Credentials）
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+};
+app.use(cors(corsOptions));
+console.log(`[App] 🌍 CORS配置: 动态反射模式（兼容所有来源 + 支持凭证）`);
 
 // 请求体解析
 app.use(express.json({ limit: '10mb' }));
@@ -114,7 +104,6 @@ import './modules/product/models/stockLog.model.js';
 
 console.log('[App] 🏥 配置健康检查端点...');
 
-// 主页信息
 app.get('/', (req, res) => {
   console.log(`[App] 📍 主页被访问，IP: ${req.ip}`);
   res.json({
@@ -130,7 +119,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// API 健康检查 - 详细版（用于监控系统）
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStates = {
@@ -168,7 +156,6 @@ app.get('/api/health', (req, res) => {
   res.json(healthcheck);
 });
 
-// Docker 健康检查 - 优化版（始终返回 200）
 app.get('/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStates = { 
@@ -188,7 +175,6 @@ app.get('/health', (req, res) => {
   });  
 });
 
-// 详细健康检查
 app.get('/health-check', async (req, res) => {
   console.log(`[HealthCheck] 🩺 详细健康检查请求`);
   
@@ -289,7 +275,10 @@ app.use('/api/stats', statsRoutes);
 console.log('[App] 🎁 注册礼包路由: /api/gift');
 app.use('/api/gift', giftRoutes);
 
+console.log('[App] 🃏 注册翻牌游戏路由: /api/games/flipcard');
 app.use('/api/games/flipcard', flipcardRoutes);
+
+console.log('[App] 📦 注册资产管理路由: /api/assets');
 app.use('/api/assets', assetRoutes);
 
 // ===================== 🎮 游戏中心路由 =====================
@@ -364,6 +353,7 @@ app.use(errorHandler);
 
 console.log('[App] ⏰ 启动定时任务...');
 
+// 启动矿池定时任务
 startMiningPoolJobs();
 
 console.log('[App] ✅ Express应用初始化完成');
