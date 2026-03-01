@@ -61,15 +61,30 @@ console.log('[App] ⚙️  配置中间件...');
 // 日志中间件
 app.use(logger);
 
-// CORS
-const corsOptions = {
-  origin: process.env.CLIENT_URL || '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-app.use(cors(corsOptions));
-console.log(`[App] 🌍 CORS配置: ${JSON.stringify(corsOptions.origin)}`);
+// 🔥🔥🔥 CORS 配置 - 手动模式（解决所有跨域问题）🔥🔥🔥
+app.use((req, res, next) => {
+  // 允许所有来源
+  res.header('Access-Control-Allow-Origin', '*');
+  
+  // 允许的方法
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  
+  // 允许的头部
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  
+  // 预检请求缓存时间（24小时）
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // 如果是预检请求，直接返回 200
+  if (req.method === 'OPTIONS') {
+    console.log(`[CORS] ✅ 预检请求通过: ${req.path}`);
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
+console.log(`[App] 🌍 CORS配置: 手动模式 - 允许所有来源`);
 
 // 请求体解析
 app.use(express.json({ limit: '10mb' }));
@@ -153,10 +168,8 @@ app.get('/api/health', (req, res) => {
   res.json(healthcheck);
 });
 
-// 🔥 Docker 健康检查 - 优化版（始终返回 200）
+// Docker 健康检查 - 优化版（始终返回 200）
 app.get('/health', (req, res) => {
-  // Docker HEALTHCHECK - 只要应用程序在运行就返回 200
-  // 不依赖数据库连接状态，避免网络延迟导致的 502 错误
   const dbState = mongoose.connection.readyState;
   const dbStates = { 
     0: 'disconnected', 
@@ -175,7 +188,7 @@ app.get('/health', (req, res) => {
   });  
 });
 
-// 详细健康检查 - 用于运维诊断
+// 详细健康检查
 app.get('/health-check', async (req, res) => {
   console.log(`[HealthCheck] 🩺 详细健康检查请求`);
   
@@ -207,8 +220,6 @@ app.get('/health-check', async (req, res) => {
     if (dbState !== 1) {
       healthcheck.message = 'Database connection issue';
       console.error(`[HealthCheck] ❌ 数据库连接异常: ${dbState}`);
-      // 🔥 修改：改为返回 200，但在 message 中标注问题
-      // 这样不会触发容器重启，但会记录日志
       return res.status(200).json(healthcheck);
     }
     
@@ -219,7 +230,6 @@ app.get('/health-check', async (req, res) => {
     console.error(`[HealthCheck] 💥 健康检查异常:`, error);
     healthcheck.message = error.message;
     healthcheck.error = error.stack;
-    // 🔥 修改：异常情况也返回 200，避免容器重启
     res.status(200).json(healthcheck);
   }
 });
@@ -303,11 +313,9 @@ console.log('[App] ⛏️ 注册矿池路由: /api/mining-pool');
 app.use('/api/mining-pool', miningPoolRoutes);
 
 // ===================== 其他路由 =====================
-// 库存管理路由
 console.log('[App] 📦 注册库存管理路由: /api/stock');
 app.use('/api/stock', productRoutes);
 
-// 回收任务路由
 console.log('[App] ♻️ 注册回收任务路由: /api/recycle');
 app.use('/api/recycle', recycleRoutes);
 
@@ -356,7 +364,6 @@ app.use(errorHandler);
 
 console.log('[App] ⏰ 启动定时任务...');
 
-// 启动矿池定时任务
 startMiningPoolJobs();
 
 console.log('[App] ✅ Express应用初始化完成');
