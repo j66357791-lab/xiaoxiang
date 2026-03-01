@@ -36,10 +36,10 @@ export class AssetService {
   static async syncAssetsFromOrders() {
     const TARGET_CATEGORY_NAME = '回收分类';
 
-    // 1. 查找所有未取消的订单，并关联分类和用户信息
+    // 1. 查找所有未取消的订单，并关联用户信息
     const orders = await Order.find({ status: { $ne: 'Cancelled' } })
-      .populate('jobSnapshot.category')
       .populate('userId', 'email profile.name'); 
+    // ✅ 修复：删除了 .populate('jobSnapshot.category')
 
     let addedCount = 0;
     let skipCount = 0;
