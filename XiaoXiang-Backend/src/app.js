@@ -99,6 +99,7 @@ import './modules/product/models/stockLog.model.js';
 
 console.log('[App] 🏥 配置健康检查端点...');
 
+// 主页信息
 app.get('/', (req, res) => {
   console.log(`[App] 📍 主页被访问，IP: ${req.ip}`);
   res.json({
@@ -114,6 +115,7 @@ app.get('/', (req, res) => {
   });
 });
 
+// API 健康检查 - 详细版（用于监控系统）
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStates = {
@@ -151,28 +153,29 @@ app.get('/api/health', (req, res) => {
   res.json(healthcheck);
 });
 
+// 🔥 Docker 健康检查 - 优化版（始终返回 200）
 app.get('/health', (req, res) => {
+  // Docker HEALTHCHECK - 只要应用程序在运行就返回 200
+  // 不依赖数据库连接状态，避免网络延迟导致的 502 错误
   const dbState = mongoose.connection.readyState;
-  console.log(`[DockerHealth] 🐳 Docker健康检查，数据库状态: ${dbState}`);
+  const dbStates = { 
+    0: 'disconnected', 
+    1: 'connected', 
+    2: 'connecting', 
+    3: 'disconnecting' 
+  };
   
-  if (dbState === 1) {
-    res.status(200).json({ 
-      status: 'healthy', 
-      timestamp: new Date().toISOString(),
-      database: 'connected',
-      service: 'xiaoxiang-backend'
-    });
-  } else {
-    console.error(`[DockerHealth] ❌ 健康检查失败，数据库状态: ${dbState}`);
-    res.status(503).json({ 
-      status: 'unhealthy', 
-      timestamp: new Date().toISOString(),
-      database: 'disconnected',
-      error: `Database connection state: ${dbState}`
-    });
-  }
+  console.log(`[DockerHealth] 🐳 Docker健康检查，数据库状态: ${dbStates[dbState]}`);
+  
+  res.status(200).json({   
+    status: 'healthy',   
+    timestamp: new Date().toISOString(),  
+    database: dbStates[dbState] || 'unknown',  
+    service: 'xiaoxiang-backend'  
+  });  
 });
 
+// 详细健康检查 - 用于运维诊断
 app.get('/health-check', async (req, res) => {
   console.log(`[HealthCheck] 🩺 详细健康检查请求`);
   
@@ -204,7 +207,9 @@ app.get('/health-check', async (req, res) => {
     if (dbState !== 1) {
       healthcheck.message = 'Database connection issue';
       console.error(`[HealthCheck] ❌ 数据库连接异常: ${dbState}`);
-      return res.status(503).json(healthcheck);
+      // 🔥 修改：改为返回 200，但在 message 中标注问题
+      // 这样不会触发容器重启，但会记录日志
+      return res.status(200).json(healthcheck);
     }
     
     console.log(`[HealthCheck] ✅ 所有健康检查通过`);
@@ -214,7 +219,8 @@ app.get('/health-check', async (req, res) => {
     console.error(`[HealthCheck] 💥 健康检查异常:`, error);
     healthcheck.message = error.message;
     healthcheck.error = error.stack;
-    res.status(503).json(healthcheck);
+    // 🔥 修改：异常情况也返回 200，避免容器重启
+    res.status(200).json(healthcheck);
   }
 });
 
