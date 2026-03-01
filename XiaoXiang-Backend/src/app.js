@@ -26,6 +26,7 @@ import notificationRoutes from './modules/notifications/notification.routes.js';
 import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
+import assetRoutes from './modules/asset/asset.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -273,6 +274,7 @@ console.log('[App] 🎁 注册礼包路由: /api/gift');
 app.use('/api/gift', giftRoutes);
 
 app.use('/api/games/flipcard', flipcardRoutes);
+app.use('/api/assets', assetRoutes);
 
 // ===================== 🎮 游戏中心路由 =====================
 console.log('[App] 🎮 注册游戏统计路由: /api/game-stats');
