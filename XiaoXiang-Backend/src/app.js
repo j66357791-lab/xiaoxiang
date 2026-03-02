@@ -26,7 +26,7 @@ import notificationRoutes from './modules/notifications/notification.routes.js';
 import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
-import assetRoutes from './modules/asset/asset.routes.js'; // 🔥 恢复：资产管理路由
+import assetRoutes from './modules/asset/asset.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -61,20 +61,15 @@ console.log('[App] ⚙️  配置中间件...');
 // 日志中间件
 app.use(logger);
 
-// 🔥 CORS 配置 - 动态反射模式（修复登录跨域问题）
+// CORS
 const corsOptions = {
-  origin: (origin, callback) => {
-    // 允许无 Origin 的请求（App、Postman、服务器内部调用）
-    if (!origin) return callback(null, true);
-    // 允许所有带 Origin 的请求，并回显 Origin（支持 Credentials）
-    return callback(null, true);
-  },
+  origin: process.env.CLIENT_URL || '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
-console.log(`[App] 🌍 CORS配置: 动态反射模式（兼容所有来源 + 支持凭证）`);
+console.log(`[App] 🌍 CORS配置: ${JSON.stringify(corsOptions.origin)}`);
 
 // 请求体解析
 app.use(express.json({ limit: '10mb' }));
@@ -158,21 +153,24 @@ app.get('/api/health', (req, res) => {
 
 app.get('/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
-  const dbStates = { 
-    0: 'disconnected', 
-    1: 'connected', 
-    2: 'connecting', 
-    3: 'disconnecting' 
-  };
+  console.log(`[DockerHealth] 🐳 Docker健康检查，数据库状态: ${dbState}`);
   
-  console.log(`[DockerHealth] 🐳 Docker健康检查，数据库状态: ${dbStates[dbState]}`);
-  
-  res.status(200).json({   
-    status: 'healthy',   
-    timestamp: new Date().toISOString(),  
-    database: dbStates[dbState] || 'unknown',  
-    service: 'xiaoxiang-backend'  
-  });  
+  if (dbState === 1) {
+    res.status(200).json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      service: 'xiaoxiang-backend'
+    });
+  } else {
+    console.error(`[DockerHealth] ❌ 健康检查失败，数据库状态: ${dbState}`);
+    res.status(503).json({ 
+      status: 'unhealthy', 
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: `Database connection state: ${dbState}`
+    });
+  }
 });
 
 app.get('/health-check', async (req, res) => {
@@ -206,7 +204,7 @@ app.get('/health-check', async (req, res) => {
     if (dbState !== 1) {
       healthcheck.message = 'Database connection issue';
       console.error(`[HealthCheck] ❌ 数据库连接异常: ${dbState}`);
-      return res.status(200).json(healthcheck);
+      return res.status(503).json(healthcheck);
     }
     
     console.log(`[HealthCheck] ✅ 所有健康检查通过`);
@@ -216,7 +214,7 @@ app.get('/health-check', async (req, res) => {
     console.error(`[HealthCheck] 💥 健康检查异常:`, error);
     healthcheck.message = error.message;
     healthcheck.error = error.stack;
-    res.status(200).json(healthcheck);
+    res.status(503).json(healthcheck);
   }
 });
 
@@ -275,11 +273,7 @@ app.use('/api/stats', statsRoutes);
 console.log('[App] 🎁 注册礼包路由: /api/gift');
 app.use('/api/gift', giftRoutes);
 
-console.log('[App] 🃏 注册翻牌游戏路由: /api/games/flipcard');
 app.use('/api/games/flipcard', flipcardRoutes);
-
-console.log('[App] 📦 注册资产管理路由: /api/assets');
-app.use('/api/assets', assetRoutes);
 
 // ===================== 🎮 游戏中心路由 =====================
 console.log('[App] 🎮 注册游戏统计路由: /api/game-stats');
@@ -301,10 +295,16 @@ app.use('/api/race', raceGameRoutes);
 console.log('[App] ⛏️ 注册矿池路由: /api/mining-pool');
 app.use('/api/mining-pool', miningPoolRoutes);
 
+// 🔥🔥🔥 新增：注册资产管理路由 🔥🔥🔥
+console.log('[App] 💎 注册资产管理路由: /api/assets');
+app.use('/api/assets', assetRoutes);
+
 // ===================== 其他路由 =====================
+// 库存管理路由
 console.log('[App] 📦 注册库存管理路由: /api/stock');
 app.use('/api/stock', productRoutes);
 
+// 回收任务路由
 console.log('[App] ♻️ 注册回收任务路由: /api/recycle');
 app.use('/api/recycle', recycleRoutes);
 
