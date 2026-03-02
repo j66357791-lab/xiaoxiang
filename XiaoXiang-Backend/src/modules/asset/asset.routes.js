@@ -2,15 +2,13 @@
 import express from 'express';
 import Asset from './asset.model.js';
 
-// 🔥 修正：根据你的项目风格，通常导出名是 'auth' 而不是 'protect'
-// 如果报错说找不到 'auth'，请打开你的 auth.js 文件看一眼最后 export 的变量名是什么
-import { auth } from '../../common/middlewares/auth.js'; 
+// 🔥 修正：引入名为 'authenticate' 的中间件
+import { authenticate } from '../../common/middlewares/auth.js'; 
 
 const router = express.Router();
 
 // 🔥 1. 创建资产 (前端同步逻辑调用此接口)
-// 这里使用 auth 中间件
-router.post('/', auth, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const assetData = req.body;
     
@@ -19,6 +17,7 @@ router.post('/', auth, async (req, res) => {
     
     res.status(201).json({ success: true, data: newAsset });
   } catch (error) {
+    // 如果是唯一键冲突，说明已存在，直接返回成功
     if (error.code === 11000) {
       return res.status(200).json({ 
         success: true, 
@@ -32,11 +31,11 @@ router.post('/', auth, async (req, res) => {
 });
 
 // 🔥 2. 获取资产列表
-router.get('/', auth, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const assets = await Asset.find()
-      .populate('order', 'orderNumber status jobSnapshot')
-      .populate('user', 'email username')
+      .populate('order', 'orderNumber status jobSnapshot') // 关联订单信息
+      .populate('user', 'email username')                  // 关联用户信息
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: assets });
@@ -47,11 +46,12 @@ router.get('/', auth, async (req, res) => {
 });
 
 // 🔥 3. 更新资产
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
+    // 如果是处置操作，自动记录处置时间
     if (updates.status === 'Disposed' && !updates.disposedAt) {
       updates.disposedAt = new Date();
     }
@@ -70,7 +70,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // 4. 删除资产
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await Asset.findByIdAndDelete(id);
