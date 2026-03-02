@@ -5,9 +5,11 @@ import mongoose from 'mongoose';
  */
 export const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI ||
-                    process.env.MONGO_URL ||
-                    'mongodb+srv://j66357791_db_user:hjh628727@cluster0.oiwbvje.mongodb.net/invest-v5?retryWrites=true&w=majority';
+const mongoUri = process.env.MONGODB_URI;  
+if (!mongoUri) {  
+  console.error('❌ 错误: MONGODB_URI 环境变量未设置');  
+  process.exit(1);  
+}  
 
     const options = {
       serverSelectionTimeoutMS: 10000,
