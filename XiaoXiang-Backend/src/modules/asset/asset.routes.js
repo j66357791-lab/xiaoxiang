@@ -1,8 +1,10 @@
 // src/modules/asset/asset.routes.js
 import express from 'express';
 import Asset from './asset.model.js';
-import mongoose from 'mongoose'; // 🆕 引入 mongoose 用于校验 ID
-import { auth } from '../../common/middlewares/auth.js'; 
+import mongoose from 'mongoose';
+
+// 🔥 修正导入：根据你的 auth.js 文件，导出名为 authenticate
+import { authenticate } from '../../common/middlewares/auth.js';
 
 const router = express.Router();
 
@@ -18,7 +20,7 @@ const toObjectId = (id) => {
 
 // ==================== 🆕 1. 安全检查接口 ====================
 // 前端在存档前调用，返回哪些订单已经在资产库中
-router.post('/check', auth, async (req, res) => {
+router.post('/check', authenticate, async (req, res) => {
   try {
     const { orderIds } = req.body; // 期望前端传一个 ID 数组
     
@@ -47,9 +49,10 @@ router.post('/check', auth, async (req, res) => {
 });
 
 // ==================== 2. 创建/更新资产 (Upsert 逻辑) ====================
-router.post('/', auth, async (req, res) => {
+// 🔥 这里使用 authenticate 中间件
+router.post('/', authenticate, async (req, res) => {
   try {
-    const { order, user, name, costPrice, status, archivedAt, archiveRemark } = req.body;
+    const { order, user, name, costPrice, archivedAt, archiveRemark } = req.body;
 
     // 🛡️ 安全校验：必须包含订单ID
     const orderId = toObjectId(order);
@@ -59,8 +62,6 @@ router.post('/', auth, async (req, res) => {
 
     // 🛡️ 安全校验：用户ID格式
     const userId = toObjectId(user);
-    // 如果 user 必填，这里可以拦截
-    // if (!userId) return res.status(400).json({ success: false, message: '无效的用户ID' });
 
     // 🔥 关键逻辑：Upsert
     // 如果该 order 已存在：更新它的 name, costPrice, archivedAt 等信息 (修复脏数据)
@@ -72,7 +73,6 @@ router.post('/', auth, async (req, res) => {
       archivedAt: archivedAt || new Date(),
       archiveRemark: archiveRemark || ''
       // 注意：这里我们不更新 status，防止覆盖已处置的状态。
-      // 只有当是全新创建时，才会使用 req.body.status 或默认值 'Stocked'
     };
 
     const savedAsset = await Asset.findOneAndUpdate(
@@ -85,27 +85,24 @@ router.post('/', auth, async (req, res) => {
       }
     );
 
-    // 判断是新建还是更新
-    const isNew = savedAsset.createdAt === savedAsset.updatedAt; // 简单判断，或者根据 upsertedCount
-
     res.status(200).json({ 
       success: true, 
       data: savedAsset, 
-      message: isNew ? '存档成功' : '数据已更新' 
+      message: '存档成功' 
     });
 
   } catch (error) {
     console.error('[Asset] 存档失败:', error);
-    // 处理可能的唯一索引冲突（虽然 upsert 已经处理了，但防御性编程）
+    // 处理可能的唯一索引冲突
     if (error.code === 11000) {
-       return res.status(200).json({ success: true, message: '数据重复，已跳过' });
+       return res.status(200).json({ success: true, message: '数据重复，已处理' });
     }
     res.status(500).json({ success: false, message: '服务器错误' });
   }
 });
 
 // ==================== 3. 获取资产列表 ====================
-router.get('/', auth, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const assets = await Asset.find()
       .populate('order', 'orderNumber status jobSnapshot') // 关联订单基本信息
@@ -120,7 +117,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // ==================== 4. 更新资产 ====================
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -146,7 +143,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // 5. 删除资产
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await Asset.findByIdAndDelete(id);
