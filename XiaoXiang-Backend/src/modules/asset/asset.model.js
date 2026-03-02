@@ -41,8 +41,8 @@ const AssetSchema = new mongoose.Schema({
   remark: { type: String, default: '' },            // 备注
   
   disposedAt: { type: Date, default: null },        // 处置时间
-
-  // 🆕 新增：批次存档信息 (之前遗漏的字段)
+  
+  // 🆕 新增：批次存档信息
   archivedAt: { type: Date, default: null },      // 存档时间
   archiveRemark: { type: String, default: '' }    // 存档备注
   
@@ -50,10 +50,13 @@ const AssetSchema = new mongoose.Schema({
   timestamps: true // 自动生成 createdAt, updatedAt
 });
 
-// 🆕 安全配置：确保查询时关联有效数据
-AssetSchema.pre(/^find/, function(next) {
-  // 这里的 this 指向 Query 对象，populate 会自动处理，这里可以加日志或钩子
-  next();
+// ==================== 🆕 安全的查询中间件（Mongoose 9 写法）====================
+// 如果暂时不需要任何逻辑，可以直接删掉这个中间件
+// 保留的话，使用 async function 或普通函数，不要写 next 参数
+AssetSchema.pre(/^find/, function() {
+  // this 指向 Query 对象
+  // 可以在这里做日志、过滤条件等
+  // 如果不需要异步操作，直接结束即可
 });
 
 const Asset = mongoose.model('Asset', AssetSchema);
