@@ -32,9 +32,6 @@ COPY XiaoXiang-Backend/ .
 # 4. 暴露端口
 EXPOSE 8080
 
-# 5. 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
-
-# 6. 启动命令
+# 5. 启动命令
 CMD ["npm", "start"]
+
