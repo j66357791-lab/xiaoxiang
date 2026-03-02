@@ -27,6 +27,7 @@ import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
 import assetRoutes from './modules/asset/asset.routes.js';
+import logRoutes from './modules/logs/operationLog.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -285,6 +286,7 @@ app.use('/api/mining-pool', miningPoolRoutes);
 console.log('[App] 💎 注册资产管理路由: /api/assets');
 app.use('/api/assets', assetRoutes);
 
+app.use('/api/logs', logRoutes);
 // ===================== 其他路由 =====================
 // 库存管理路由
 console.log('[App] 📦 注册库存管理路由: /api/stock');
