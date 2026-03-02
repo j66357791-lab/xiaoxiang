@@ -27,7 +27,7 @@ import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
 import assetRoutes from './modules/asset/asset.routes.js';
-import logRoutes from './modules/logs/operationLog.routes.js';
+import logRoutes from './modules/asset/logs/operationLog.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
