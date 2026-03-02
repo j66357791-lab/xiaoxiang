@@ -1,4 +1,4 @@
-// src/modules/assets/asset.controller.js
+// src/modules/asset/asset.controller.js
 import Asset from './asset.model.js';
 import Order from '../orders/order.model.js';
 
@@ -6,7 +6,7 @@ import Order from '../orders/order.model.js';
 const VALID_ASSET_ORDER_STATUSES = ['Completed', 'PendingPayment'];
 
 /**
- * 从订单创建资产 (只执行一次，生成初始记录)
+ * 从订单创建资产
  */
 export const createFromOrder = async (req, res) => {
   try {
@@ -16,7 +16,6 @@ export const createFromOrder = async (req, res) => {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ success: false, message: '订单不存在' });
 
-    // 完整状态校验
     if (!VALID_ASSET_ORDER_STATUSES.includes(order.status)) {
       return res.status(400).json({ 
         success: false, 
@@ -24,11 +23,9 @@ export const createFromOrder = async (req, res) => {
       });
     }
 
-    // 幂等性检查
     const exists = await Asset.findOne({ order: orderId });
     if (exists) return res.json({ success: true, message: '该订单已录入', data: exists });
 
-    // 创建资产
     const newAsset = await Asset.create({
       order: order._id,
       user: order.userId,
@@ -37,7 +34,6 @@ export const createFromOrder = async (req, res) => {
       status: 'InStock',
     });
 
-    // 更新订单的资产标记
     await Order.findByIdAndUpdate(orderId, {
       assetCreated: true,
       assetId: newAsset._id
@@ -52,6 +48,7 @@ export const createFromOrder = async (req, res) => {
 
 /**
  * 获取资产列表
+ * 🔥 关键：必须 populate order 才能获取订单号
  */
 export const getAssets = async (req, res) => {
   try {
@@ -59,10 +56,9 @@ export const getAssets = async (req, res) => {
     const filter = {};
     if (status) filter.status = status;
 
-    // 联表查询，获取订单号、订单状态和用户信息
     const assets = await Asset.find(filter)
       .populate('user', 'email name')
-      .populate('order', 'orderNumber status')
+      .populate('order', 'orderNumber status')  // 🔥 必须有这一行
       .sort({ createdAt: -1 }); 
 
     res.json({ success: true, data: assets });
@@ -71,16 +67,14 @@ export const getAssets = async (req, res) => {
   }
 };
 
-
 /**
- * 更新资产 (处置/编辑)
+ * 更新资产
  */
 export const updateAsset = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    // 如果前端传了 soldPrice 或 disposeAction，说明是处置操作，记录时间
     if (updateData.soldPrice !== undefined || updateData.disposeAction) {
       updateData.disposedAt = new Date();
       updateData.status = 'Disposed';
@@ -100,7 +94,7 @@ export const updateAsset = async (req, res) => {
 };
 
 /**
- * 资产回退 - 重置资产状态
+ * 资产回退
  */
 export const revertAsset = async (req, res) => {
   try {
@@ -111,7 +105,6 @@ export const revertAsset = async (req, res) => {
       return res.status(404).json({ success: false, message: '资产不存在' });
     }
 
-    // 构造重置数据
     const resetData = {
       status: 'InStock',
       disposeAction: null,
@@ -152,7 +145,6 @@ export const deleteAsset = async (req, res) => {
       return res.status(404).json({ success: false, message: '资产不存在' });
     }
 
-    // 检查关联订单状态
     const orderStatus = asset.order?.status;
     if (!['Cancelled', 'Rejected'].includes(orderStatus)) {
       return res.status(400).json({ 
@@ -161,10 +153,8 @@ export const deleteAsset = async (req, res) => {
       });
     }
 
-    // 删除资产
     await Asset.findByIdAndDelete(id);
 
-    // 更新订单的资产标记
     if (asset.order?._id) {
       await Order.findByIdAndUpdate(asset.order._id, {
         assetCreated: false,
