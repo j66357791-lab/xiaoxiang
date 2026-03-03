@@ -10,8 +10,8 @@ import app from './src/app.js';
 import Job from './src/modules/jobs/job.model.js';
 
 // 🆕 龟兔赛跑游戏导入
-import { initRaceSocket } from './src/modules/GameCenter/guitusaipao/RaceGame.socket.js';
-import { RaceGameManager } from './src/modules/GameCenter/guitusaipao/RaceGame.service.js';
+//import { initRaceSocket } from './src/modules/GameCenter/guitusaipao/RaceGame.socket.js';
+//import { RaceGameManager } from './src/modules/GameCenter/guitusaipao/RaceGame.service.js';
 
 // 环境变量检查
 console.log('[Server] 🔍 检查环境变量...');
@@ -100,14 +100,14 @@ const startServer = async () => {
     });
 
     // 🆕 初始化龟兔赛跑 WebSocket
-    console.log('[Server] 🎮 初始化龟兔赛跑 WebSocket...');
-    initRaceSocket(server);
-    console.log('[Server] ✅ 龟兔赛跑 WebSocket 已启动: /ws/race');
+   //console.log('[Server] 🎮 初始化龟兔赛跑 WebSocket...');
+   //initRaceSocket(server);
+    //console.log('[Server] ✅ 龟兔赛跑 WebSocket 已启动: /ws/race');
     
     // 🆕 初始化龟兔赛跑游戏服务
-    console.log('[Server] 🐢 初始化龟兔赛跑游戏服务...');
-    await RaceGameManager.initialize();
-    console.log('[Server] ✅ 龟兔赛跑游戏服务已启动');
+    //console.log('[Server] 🐢 初始化龟兔赛跑游戏服务...');
+    //await RaceGameManager.initialize();
+    //console.log('[Server] ✅ 龟兔赛跑游戏服务已启动');
 
     // 服务器错误处理
     server.on('error', (error) => {
