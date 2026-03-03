@@ -26,7 +26,7 @@ import notificationRoutes from './modules/notifications/notification.routes.js';
 import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
-import assetRoutes from './modules/asset/asset.routes.js';
+// ✅ 只保留新的快照路由，删除旧的 asset.routes.js
 import assetRoutes from './modules/asset/assetSnapshot.routes.js';
 
 // 🆕 矿池路由和定时任务
@@ -309,7 +309,6 @@ app.use('/api/recycle', recycleRoutes);
 console.log('[App] 💰 注册资产路由: /api/assets');
 app.use('/api/assets', assetRoutes);
 
-app.use('/api/assets', assetRoutes);
 // =====================
 // 路由调试端点
 // =====================
