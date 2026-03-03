@@ -28,6 +28,7 @@ import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
 // ✅ 只保留新的快照路由，删除旧的 asset.routes.js
 import assetRoutes from './modules/asset/assetSnapshot.routes.js';
+import inventorySnapshotRoutes from './modules/inventory/inventorySnapshot.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -39,7 +40,7 @@ import {
   wheelGameRoutes,
   mysteryShopRoutes,
   gamescaiquanRoutes,
-  raceGameRoutes
+  //raceGameRoutes
 } from './modules/GameCenter/index.js';
 
 // 获取 __dirname (ES6 模块)
@@ -275,6 +276,7 @@ console.log('[App] 🎁 注册礼包路由: /api/gift');
 app.use('/api/gift', giftRoutes);
 
 app.use('/api/games/flipcard', flipcardRoutes);
+app.use('/api/inventory', inventorySnapshotRoutes);
 
 // ===================== 🎮 游戏中心路由 =====================
 console.log('[App] 🎮 注册游戏统计路由: /api/game-stats');
@@ -289,8 +291,8 @@ app.use('/api/mystery-shop', mysteryShopRoutes);
 console.log('[App] ✊ 注册猜拳游戏路由: /api/gamescaiquan');
 app.use('/api/gamescaiquan', gamescaiquanRoutes);
 
-console.log('[App] 🐢 注册龟兔赛跑路由: /api/race');
-app.use('/api/race', raceGameRoutes);
+//console.log('[App] 🐢 注册龟兔赛跑路由: /api/race');
+//app.use('/api/race', raceGameRoutes);
 
 // ===================== ⛏️ 矿池路由 =====================
 console.log('[App] ⛏️ 注册矿池路由: /api/mining-pool');
