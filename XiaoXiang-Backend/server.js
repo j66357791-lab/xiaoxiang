@@ -145,24 +145,26 @@ const startServer = async () => {
       });
     });
 
-    // 定时任务：每分钟检查过期任务
-    console.log('[Server] ⏰ 启动定时任务：每分钟检查过期任务');
+// 定时任务：每分钟检查过期任务
+console.log('[Server] ⏰ 启动定时任务：每分钟检查过期任务');
+setInterval(async () => {
+  try {
+    // 👇 只有出错或真正有处理结果时，才打印日志
+    const count = await Job.checkDeadlines();
     
-    setInterval(async () => {
-      try {
-        console.log('[Server] ⏰ 执行定时任务：检查任务截止日期...');
-        const count = await Job.checkDeadlines();
-        if (count > 0) {
-          console.log(`[Server] ⏰ 定时任务完成：检查到 ${count} 个任务已自动冻结`);
-        } else {
-          console.log('[Server] ⏰ 定时任务完成：没有需要处理的任务');
-        }
-      } catch (err) {
-        console.error('[Server] ❌ 定时任务失败:', err);
-        console.error('[Server] 🔍 错误详情:', err.stack);
-      }
-    }, 60 * 1000); // 每分钟执行一次
+    if (count > 0) {
+        // 只有真的冻结了任务，才打印，这很重要
+        console.log(`[Server] ⏰ 定时任务：检查到 ${count} 个任务已自动冻结`);
+    }
+    // 👇 如果 count 是 0，什么都不打印，保持安静，节省磁盘
     
+  } catch (err) {
+    // 错误必须打印，这不能省
+    console.error('[Server] ❌ 定时任务失败:', err);
+    console.error('[Server] 🔍 错误详情:', err.stack);
+  }
+}, 60 * 1000);
+
     console.log('[Server] ✅ 定时任务已启动，间隔: 60秒');
 
   } catch (error) {
