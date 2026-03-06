@@ -7,16 +7,16 @@ router.get('/', (req, res) => {
   res.json({
     success: true,
     data: {
-      latestVersion: '1.1.1',
-      downloadUrl: 'https://expo.dev/artifacts/eas/0c2250ac-f6e1-4b35-ad3f-b9fcbec73697',
-      updateMessage: `【v1.1.1 更新内容】
+      latestVersion: '1.1.2',
+      downloadUrl: 'https://expo.dev/artifacts/eas/6fb51ec2-df80-4a4f-94e0-63c11aa1902b',
+      updateMessage: `【v1.1.2 更新内容】
 
-1. 优化休闲中心功能，拓展体验卡牌回合游戏仙侠客栈
-2. 新增积分、小象币玩法
-3. 修复已知问题`,
+1. UI优化
+2. 性能提升
+3. 漏洞补丁`,
       forceUpdate: false,
       platform: {
-        android: 'https://expo.dev/artifacts/eas/0c2250ac-f6e1-4b35-ad3f-b9fcbec73697',
+        android: 'https://expo.dev/artifacts/eas/6fb51ec2-df80-4a4f-94e0-63c11aa1902b',
         ios: 'https://expo.dev/artifacts/eas/xxxxx'
       }
     }
