@@ -14,7 +14,7 @@ export class PaymentMethodService {
    * 提交支付方式
    */
   static async createPaymentMethod(userId, type, accountNo, bankName, qrCode) {
-    if (!PAYMENT_METHOD_TYPE[type]) {
+    if (!Object.values(PAYMENT_METHOD_TYPE).includes(type)) {
       throw new BadRequestError('无效的支付方式类型');
     }
 
