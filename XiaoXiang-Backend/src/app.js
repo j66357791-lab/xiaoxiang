@@ -29,6 +29,7 @@ import assetRoutes from './modules/asset/assetSnapshot.routes.js';
 import inventorySnapshotRoutes from './modules/inventory/inventorySnapshot.routes.js';
 import uploadRoutes from './modules/upload/upload.routes.js';
 import warehouseRoutes from './modules/warehouses/warehouse.routes.js';
+import helpPeopleRoutes from './modules/help-people/help-people.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -293,6 +294,9 @@ app.use('/api/upload', uploadRoutes);
 // ===================== 🏭 仓库路由 =====================
 console.log('[App] 🏭 注册仓库路由: /api/warehouses');
 app.use('/api/warehouses', warehouseRoutes);
+
+// 注册路由
+app.use('/api/help-people', helpPeopleRoutes);
 
 // =====================
 // 路由调试端点
