@@ -1,12 +1,18 @@
+// src/common/middlewares/upload.js
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// 确保 uploads 目录存在
-const uploadDir = 'uploads';
+// ✅ 修改：使用 /app/uploads 目录（匹配 Zeabur 挂载路径）
+const uploadDir = '/app/uploads';
+
+// 确保上传目录存在
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+  console.log(`[Upload] 📁 创建上传目录: ${uploadDir}`);
 }
+
+console.log(`[Upload] 📂 上传目录: ${uploadDir}`);
 
 // 存储配置
 const storage = multer.diskStorage({
@@ -14,7 +20,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名
+    // 生成唯一文件名：时间戳-随机数.扩展名
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
