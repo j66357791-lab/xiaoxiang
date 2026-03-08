@@ -32,14 +32,22 @@ export class CategoryService {
   static async createCategory(data) {
     const { name, color, icon, parentId, sort, isActive } = data;
 
-    // 检查同级是否已存在同名
-    const existing = await Category.findOne({ name, parentId: parentId || null });
-    if (existing) throw new ConflictError('该分类名称已存在');
+    // 🔧 修复：正确处理 parentId
+    const actualParentId = parentId && parentId !== '' ? parentId : null;
+
+    // 检查同级是否已存在同名分类
+    const existing = await Category.findOne({ 
+      name, 
+      parentId: actualParentId 
+    });
+    if (existing) {
+      throw new ConflictError('该分类名称已存在');
+    }
 
     // 计算层级
     let level = 1;
-    if (parentId) {
-      const parent = await Category.findById(parentId);
+    if (actualParentId) {
+      const parent = await Category.findById(actualParentId);
       if (!parent) throw new NotFoundError('父级分类不存在');
       if (parent.level >= 3) throw new ConflictError('分类层级不能超过3级');
       level = parent.level + 1;
@@ -49,7 +57,7 @@ export class CategoryService {
       name,
       color: color || '#4364F7',
       icon,
-      parentId: parentId || null,
+      parentId: actualParentId,
       level,
       sort: sort || 0,
       isActive: isActive ?? true,
@@ -58,13 +66,30 @@ export class CategoryService {
     return category;
   }
 
+  // 🔧 修复：更新时检查重名
   static async updateCategory(id, data) {
     const category = await Category.findById(id);
     if (!category) throw new NotFoundError('分类不存在');
 
-    const { name, color, icon, sort, isActive } = data;
+    const { name, color, icon, sort, isActive, parentId } = data;
 
-    if (name !== undefined) category.name = name;
+    // 如果修改了名称，检查是否与其他分类重名
+    if (name && name !== category.name) {
+      const actualParentId = parentId !== undefined 
+        ? (parentId && parentId !== '' ? parentId : null)
+        : category.parentId;
+        
+      const existing = await Category.findOne({ 
+        name, 
+        parentId: actualParentId,
+        _id: { $ne: id }  // 排除当前分类
+      });
+      if (existing) {
+        throw new ConflictError('该分类名称已存在');
+      }
+      category.name = name;
+    }
+
     if (color !== undefined) category.color = color;
     if (icon !== undefined) category.icon = icon;
     if (sort !== undefined) category.sort = sort;
