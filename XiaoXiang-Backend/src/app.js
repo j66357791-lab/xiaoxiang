@@ -1,3 +1,4 @@
+// src/app.js
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -6,8 +7,6 @@ import mongoose from 'mongoose';
 import { logger } from './common/middlewares/logger.js';
 import { errorHandler, notFoundHandler } from './common/middlewares/error.js';
 import { cacheMiddleware } from './common/middlewares/cache.js';
-import productRoutes from './modules/product/routes/product.routes.js';
-import recycleRoutes from './modules/product/routes/recycle.routes.js';
 
 // ==================== 路由引入 ====================
 import authRoutes from './modules/auth/auth.routes.js';
@@ -26,9 +25,9 @@ import notificationRoutes from './modules/notifications/notification.routes.js';
 import giftRoutes from './modules/gift/gift.routes.js';
 import statsRoutes from './modules/stats/stats.routes.js';
 import { flipcardRoutes } from './modules/GameCenter/index.js';
-// ✅ 只保留新的快照路由，删除旧的 asset.routes.js
 import assetRoutes from './modules/asset/assetSnapshot.routes.js';
 import inventorySnapshotRoutes from './modules/inventory/inventorySnapshot.routes.js';
+import uploadRoutes from './modules/upload/upload.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -40,7 +39,6 @@ import {
   wheelGameRoutes,
   mysteryShopRoutes,
   gamescaiquanRoutes,
-  //raceGameRoutes
 } from './modules/GameCenter/index.js';
 
 // 获取 __dirname (ES6 模块)
@@ -78,22 +76,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 console.log('[App] 📦 请求体解析中间件已配置');
 
-// 静态文件服务
-const uploadsPath = path.join(__dirname, '../../uploads');
+// ✅ 修改：静态文件服务 - 使用 Zeabur 挂载路径
+const uploadsPath = '/app/uploads';
 app.use('/uploads', express.static(uploadsPath));
 console.log(`[App] 📂 静态文件路径: ${uploadsPath}`);
-
-// =====================
-// 注册模型
-// =====================
-
-console.log('[App] 📦 注册数据模型...');
-
-// 预加载模型以确保Schema注册
-import './modules/product/models/product.model.js';
-import './modules/product/models/orderBind.model.js';
-import './modules/product/models/nightAudit.model.js';
-import './modules/product/models/stockLog.model.js';
 
 // =====================
 // 健康检查
@@ -291,25 +277,17 @@ app.use('/api/mystery-shop', mysteryShopRoutes);
 console.log('[App] ✊ 注册猜拳游戏路由: /api/gamescaiquan');
 app.use('/api/gamescaiquan', gamescaiquanRoutes);
 
-//console.log('[App] 🐢 注册龟兔赛跑路由: /api/race');
-//app.use('/api/race', raceGameRoutes);
-
 // ===================== ⛏️ 矿池路由 =====================
 console.log('[App] ⛏️ 注册矿池路由: /api/mining-pool');
 app.use('/api/mining-pool', miningPoolRoutes);
 
-// ===================== 其他路由 =====================
-// 库存管理路由
-console.log('[App] 📦 注册库存管理路由: /api/stock');
-app.use('/api/stock', productRoutes);
-
-// 回收任务路由
-console.log('[App] ♻️ 注册回收任务路由: /api/recycle');
-app.use('/api/recycle', recycleRoutes);
-
-//资产中心
+// ===================== 💰 资产路由 =====================
 console.log('[App] 💰 注册资产路由: /api/assets');
 app.use('/api/assets', assetRoutes);
+
+// ===================== 📤 上传路由 =====================
+console.log('[App] 📤 注册上传路由: /api/upload');
+app.use('/api/upload', uploadRoutes);
 
 // =====================
 // 路由调试端点
