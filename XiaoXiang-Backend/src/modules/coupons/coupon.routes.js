@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { authenticate, authorize } from '../../common/middlewares/auth.js';
 import { CouponController } from './coupon.controller.js';
 import { couponValidators } from './coupon.validator.js';
-import { validate } from '../../common/middlewares/validate.js';
+import { validate } from '../../common/middlewares/validator.js';
 import { asyncHandler } from '../../common/utils/asyncHandler.js';
 
 const router = Router();
