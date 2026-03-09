@@ -1,0 +1,380 @@
+// src/modules/help-people/help-people.controller.js
+// 客服控制器 - 优化版
+
+import * as helpService from './help-people.service.js';
+
+// ==================== 客服管理接口 ====================
+
+/**
+ * 初始化超级管理员
+ */
+export async function initSuperAdmin(req, res) {
+  try {
+    const staff = await helpService.initSuperAdmin();
+    res.json({ code: 200, message: 'success', data: staff });
+  } catch (error) {
+    console.error('[初始化客服] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '初始化失败' });
+  }
+}
+
+/**
+ * 客服上线
+ */
+export async function serviceOnline(req, res) {
+  try {
+    const serviceId = req.body.serviceId || req.user?.userId || '001';
+    const staff = await helpService.serviceOnline(serviceId);
+    res.json({ code: 200, message: 'success', data: staff });
+  } catch (error) {
+    console.error('[客服上线] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '上线失败' });
+  }
+}
+
+/**
+ * 客服下线
+ */
+export async function serviceOffline(req, res) {
+  try {
+    const serviceId = req.body.serviceId || req.user?.userId || '001';
+    const staff = await helpService.serviceOffline(serviceId);
+    res.json({ code: 200, message: 'success', data: staff });
+  } catch (error) {
+    console.error('[客服下线] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '下线失败' });
+  }
+}
+
+/**
+ * 切换自动接单模式
+ */
+export async function toggleAutoAssign(req, res) {
+  try {
+    const serviceId = req.body.serviceId || req.user?.userId || '001';
+    const { isAutoAssign } = req.body;
+    const staff = await helpService.toggleAutoAssign(serviceId, isAutoAssign);
+    res.json({ code: 200, message: 'success', data: staff });
+  } catch (error) {
+    console.error('[切换自动接单] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '切换失败' });
+  }
+}
+
+/**
+ * 获取客服工作台数据
+ */
+export async function getServiceWorkbench(req, res) {
+  try {
+    const serviceId = req.query.serviceId || req.user?.userId || '001';
+    const data = await helpService.getServiceWorkbench(serviceId);
+    res.json({ code: 200, message: 'success', data });
+  } catch (error) {
+    console.error('[获取工作台] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取失败' });
+  }
+}
+
+/**
+ * 获取需要回复的工单
+ */
+export async function getNeedReplyTickets(req, res) {
+  try {
+    const serviceId = req.query.serviceId || req.user?.userId || '001';
+    const tickets = await helpService.getNeedReplyTickets(serviceId);
+    res.json({ code: 200, message: 'success', data: tickets });
+  } catch (error) {
+    console.error('[获取待回复工单] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取失败' });
+  }
+}
+
+// ==================== 用户端接口 ====================
+
+/**
+ * 创建工单（用户进线）
+ */
+export async function createTicket(req, res) {
+  try {
+    const userId = req.user?.userId || req.body.userId;
+    const { userInfo, firstMessage } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ code: 400, message: '缺少用户ID' });
+    }
+    
+    const result = await helpService.createTicket(userId, userInfo, firstMessage);
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[创建工单] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '创建工单失败' });
+  }
+}
+
+/**
+ * 获取工单详情
+ */
+export async function getTicketDetail(req, res) {
+  try {
+    const { ticketId } = req.params;
+    const result = await helpService.getTicketDetail(ticketId);
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[获取工单详情] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取工单详情失败' });
+  }
+}
+
+/**
+ * 获取工单完整详情（包含详情表单数据）
+ */
+export async function getTicketFullDetail(req, res) {
+  try {
+    const { ticketId } = req.params;
+    const result = await helpService.getTicketFullDetail(ticketId);
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[获取工单完整详情] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取工单详情失败' });
+  }
+}
+
+/**
+ * 保存工单详情（持久化）
+ */
+export async function saveTicketDetail(req, res) {
+  try {
+    const { ticketId } = req.params;
+    const serviceId = req.user?.userId || req.body.serviceId || '001';
+    const detailData = req.body;
+    
+    const result = await helpService.saveTicketDetail(ticketId, detailData, serviceId);
+    if (!result) {
+      return res.status(404).json({ code: 404, message: '工单不存在' });
+    }
+    
+    res.json({ code: 200, message: '保存成功', data: result });
+  } catch (error) {
+    console.error('[保存工单详情] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '保存失败' });
+  }
+}
+
+/**
+ * 用户发送消息
+ */
+export async function sendUserMessage(req, res) {
+  try {
+    const userId = req.user?.userId || req.body.userId;
+    const { ticketId, content, messageType, attachment } = req.body;
+    
+    if (!ticketId || !content) {
+      return res.status(400).json({ code: 400, message: '缺少必要参数' });
+    }
+    
+    const result = await helpService.sendUserMessage(ticketId, userId, content, messageType || 'text', attachment);
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[发送消息] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '发送消息失败' });
+  }
+}
+
+/**
+ * 获取用户服务历史
+ */
+export async function getUserServiceHistory(req, res) {
+  try {
+    const userId = req.query.userId || req.user?.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ code: 400, message: '缺少用户ID' });
+    }
+    
+    const history = await helpService.getUserServiceHistory(userId);
+    res.json({ code: 200, message: 'success', data: history });
+  } catch (error) {
+    console.error('[获取服务历史] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取服务历史失败' });
+  }
+}
+
+// ==================== 客服端接口 ====================
+
+/**
+ * 客服回复
+ */
+export async function serviceReply(req, res) {
+  try {
+    const serviceId = req.user?.userId || req.body.serviceId || '001';
+    const { ticketId, content, messageType, attachment } = req.body;
+    
+    if (!ticketId || !content) {
+      return res.status(400).json({ code: 400, message: '缺少必要参数' });
+    }
+    
+    const message = await helpService.serviceReply(ticketId, serviceId, content, messageType || 'text', attachment);
+    res.json({ code: 200, message: 'success', data: message });
+  } catch (error) {
+    console.error('[客服回复] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '客服回复失败' });
+  }
+}
+
+/**
+ * 关闭工单
+ */
+export async function closeTicket(req, res) {
+  try {
+    const serviceId = req.user?.userId || req.body.serviceId || '001';
+    const { ticketId, closeType, closeReason, solution, satisfaction, remark } = req.body;
+    
+    if (!ticketId) {
+      return res.status(400).json({ code: 400, message: '缺少工单ID' });
+    }
+    
+    const result = await helpService.closeTicket(ticketId, serviceId, {
+      closeType,
+      closeReason,
+      solution,
+      satisfaction,
+      remark,
+    });
+    res.json({ code: 200, message: '工单已关闭' });
+  } catch (error) {
+    console.error('[关闭工单] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '关闭工单失败' });
+  }
+}
+
+/**
+ * 管理员创建工单（新增）
+ */
+export async function adminCreateTicket(req, res) {
+  try {
+    const serviceId = req.user?.userId || req.body.serviceId || '001';
+    const { userId, userInfo, issueType, description } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ code: 400, message: '缺少用户ID' });
+    }
+    
+    if (!description) {
+      return res.status(400).json({ code: 400, message: '缺少问题描述' });
+    }
+    
+    const result = await helpService.adminCreateTicket(userId, userInfo || {}, issueType || 'complaint', description, serviceId);
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[管理员创建工单] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '创建工单失败' });
+  }
+}
+
+// ==================== FAQ 接口 ====================
+
+export async function getFAQList(req, res) {
+  try {
+    const { category, page = 1, limit = 20 } = req.query;
+    const result = await helpService.getFAQList({ category }, parseInt(page), parseInt(limit));
+    res.json({ code: 200, message: 'success', data: result });
+  } catch (error) {
+    console.error('[获取FAQ] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取FAQ失败' });
+  }
+}
+
+export async function createFAQ(req, res) {
+  try {
+    const faq = await helpService.createFAQ(req.body);
+    res.json({ code: 200, message: 'success', data: faq });
+  } catch (error) {
+    console.error('[创建FAQ] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '创建FAQ失败' });
+  }
+}
+
+export async function updateFAQ(req, res) {
+  try {
+    const { faqId } = req.params;
+    await helpService.updateFAQ(faqId, req.body);
+    res.json({ code: 200, message: 'success' });
+  } catch (error) {
+    console.error('[更新FAQ] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '更新FAQ失败' });
+  }
+}
+
+export async function deleteFAQ(req, res) {
+  try {
+    const { faqId } = req.params;
+    await helpService.deleteFAQ(faqId);
+    res.json({ code: 200, message: 'success' });
+  } catch (error) {
+    console.error('[删除FAQ] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '删除FAQ失败' });
+  }
+}
+
+// ==================== 快捷回复接口 ====================
+
+export async function getQuickReplies(req, res) {
+  try {
+    const serviceId = req.query.serviceId || req.user?.userId || '001';
+    const replies = await helpService.getQuickReplies(serviceId);
+    res.json({ code: 200, message: 'success', data: replies });
+  } catch (error) {
+    console.error('[获取快捷回复] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取失败' });
+  }
+}
+
+export async function createQuickReply(req, res) {
+  try {
+    const serviceId = req.user?.userId || '001';
+    const reply = await helpService.createQuickReply(req.body, serviceId);
+    res.json({ code: 200, message: 'success', data: reply });
+  } catch (error) {
+    console.error('[创建快捷回复] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '创建失败' });
+  }
+}
+
+// ==================== 统计接口 ====================
+
+export async function getStatistics(req, res) {
+  try {
+    const stats = await helpService.getStatistics();
+    res.json({ code: 200, message: 'success', data: stats });
+  } catch (error) {
+    console.error('[获取统计] 错误:', error);
+    res.status(500).json({ code: 500, message: error.message || '获取统计数据失败' });
+  }
+}
+
+const helpController = {
+  initSuperAdmin,
+  serviceOnline,
+  serviceOffline,
+  toggleAutoAssign,
+  getServiceWorkbench,
+  getNeedReplyTickets,
+  createTicket,
+  getTicketDetail,
+  getTicketFullDetail,
+  saveTicketDetail,
+  sendUserMessage,
+  getUserServiceHistory,
+  serviceReply,
+  closeTicket,
+  adminCreateTicket,
+  getFAQList,
+  createFAQ,
+  updateFAQ,
+  deleteFAQ,
+  getQuickReplies,
+  createQuickReply,
+  getStatistics,
+};
+
+export default helpController;
