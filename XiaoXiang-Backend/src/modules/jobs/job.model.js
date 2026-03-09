@@ -28,7 +28,7 @@ const JobSchema = new mongoose.Schema({
 
   // ==================== 价格配置 ====================
   pricing: {
-    basePrice: { type: Number, default: 0 }, // 预估价格
+    basePrice: { type: Number, default: 0 },
     minPrice: { type: Number, default: 0 },
     maxPrice: { type: Number, default: 0 },
     priceUnit: { type: String, default: '元' },
@@ -46,29 +46,24 @@ const JobSchema = new mongoose.Schema({
   estimatedPrice: {
     type: Number,
     default: 0,
-    comment: '预估回收价格，管理员发布时填写',
   },
 
   // ==================== 🆕 预估打款时间（小时） ====================
   estimatedPaymentHours: {
     type: Number,
     default: 72,
-    comment: '预估打款时间，单位小时',
   },
 
   // ==================== 🆕 寄送方式配置 ====================
   shippingMethods: {
     express: {
       enabled: { type: Boolean, default: true },
-      comment: '快递寄送',
     },
     pickup: {
       enabled: { type: Boolean, default: false },
-      comment: '上门回收',
     },
     self: {
       enabled: { type: Boolean, default: false },
-      comment: '自行送达',
     },
   },
 
@@ -80,13 +75,13 @@ const JobSchema = new mongoose.Schema({
       city: String,
       districts: [String],
     }],
-    pickupRadius: { type: Number, default: 10, comment: '服务半径（公里）' },
+    pickupRadius: { type: Number, default: 10 },
     availableTimes: [{
-      dayOfWeek: { type: Number, min: 0, max: 6, comment: '0-6, 0表示周日' },
+      dayOfWeek: { type: Number, min: 0, max: 6 },
       startTime: { type: String, default: '09:00' },
       endTime: { type: String, default: '18:00' },
     }],
-    notice: { type: String, comment: '上门回收须知' },
+    notice: { type: String },
   },
 
   // ==================== 质检仓库 ====================
@@ -211,10 +206,8 @@ JobSchema.statics.findPickupAvailable = async function(longitude, latitude, radi
   .populate('assignedWarehouse')
   .lean();
 
-  // 过滤距离
   return jobs.filter(job => {
     if (!job.pickupConfig?.enabled) return false;
-    // TODO: 根据仓库位置计算距离
     return true;
   });
 };
