@@ -30,6 +30,7 @@ import inventorySnapshotRoutes from './modules/inventory/inventorySnapshot.route
 import uploadRoutes from './modules/upload/upload.routes.js';
 import warehouseRoutes from './modules/warehouses/warehouse.routes.js';
 import helpPeopleRoutes from './modules/help-people/help-people.routes.js';
+import couponRoutes from './modules/coupons/coupon.routes.js';
 
 // 🆕 矿池路由和定时任务
 import miningPoolRoutes from './modules/mining-pool/mining-pool.routes.js';
@@ -298,6 +299,8 @@ app.use('/api/warehouses', warehouseRoutes);
 // 注册路由
 app.use('/api/help-people', helpPeopleRoutes);
 
+console.log('[App] 🎫 注册优惠券路由: /api/coupons');
+app.use('/api/coupons', couponRoutes);
 // =====================
 // 路由调试端点
 // =====================
