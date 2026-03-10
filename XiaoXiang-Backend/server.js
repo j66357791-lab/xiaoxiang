@@ -7,11 +7,6 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { connectDB } from './src/common/config/database.js';
 import app from './src/app.js';
-import Job from './src/modules/jobs/job.model.js';
-
-// 🆕 龟兔赛跑游戏导入
-//import { initRaceSocket } from './src/modules/GameCenter/guitusaipao/RaceGame.socket.js';
-//import { RaceGameManager } from './src/modules/GameCenter/guitusaipao/RaceGame.service.js';
 
 // 环境变量检查
 console.log('[Server] 🔍 检查环境变量...');
@@ -86,8 +81,8 @@ const startServer = async () => {
       console.log(`[Server]    - 认证: http://localhost:${PORT}/api/auth`);
       console.log(`[Server]    - 任务: http://localhost:${PORT}/api/jobs`);
       console.log(`[Server]    - 订单: http://localhost:${PORT}/api/orders`);
-      console.log(`[Server]    - 龟兔赛跑: http://localhost:${PORT}/api/race`);
-      console.log(`[Server]    - 龟兔赛跑WS: ws://localhost:${PORT}/ws/race`);
+      console.log(`[Server]    - 仓库: http://localhost:${PORT}/api/warehouses`);
+      console.log(`[Server]    - 优惠券: http://localhost:${PORT}/api/coupons`);
       console.log('[Server] ========================================');
       
       // 内存使用情况
@@ -98,16 +93,6 @@ const startServer = async () => {
       console.log(`[Server]    - 堆使用: ${Math.round(memory.heapUsed / 1024 / 1024)} MB`);
       console.log('[Server] ========================================');
     });
-
-    // 🆕 初始化龟兔赛跑 WebSocket
-   //console.log('[Server] 🎮 初始化龟兔赛跑 WebSocket...');
-   //initRaceSocket(server);
-    //console.log('[Server] ✅ 龟兔赛跑 WebSocket 已启动: /ws/race');
-    
-    // 🆕 初始化龟兔赛跑游戏服务
-    //console.log('[Server] 🐢 初始化龟兔赛跑游戏服务...');
-    //await RaceGameManager.initialize();
-    //console.log('[Server] ✅ 龟兔赛跑游戏服务已启动');
 
     // 服务器错误处理
     server.on('error', (error) => {
@@ -144,28 +129,6 @@ const startServer = async () => {
         console.log(`[Server] 🔌 客户端断开连接: ${clientAddress}`);
       });
     });
-
-// 定时任务：每分钟检查过期任务
-console.log('[Server] ⏰ 启动定时任务：每分钟检查过期任务');
-setInterval(async () => {
-  try {
-    // 👇 只有出错或真正有处理结果时，才打印日志
-    const count = await Job.checkDeadlines();
-    
-    if (count > 0) {
-        // 只有真的冻结了任务，才打印，这很重要
-        console.log(`[Server] ⏰ 定时任务：检查到 ${count} 个任务已自动冻结`);
-    }
-    // 👇 如果 count 是 0，什么都不打印，保持安静，节省磁盘
-    
-  } catch (err) {
-    // 错误必须打印，这不能省
-    console.error('[Server] ❌ 定时任务失败:', err);
-    console.error('[Server] 🔍 错误详情:', err.stack);
-  }
-}, 60 * 1000);
-
-    console.log('[Server] ✅ 定时任务已启动，间隔: 60秒');
 
   } catch (error) {
     console.error('[Server] 💥 服务器启动失败:');
