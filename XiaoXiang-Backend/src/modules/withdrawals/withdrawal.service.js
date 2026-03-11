@@ -1,6 +1,6 @@
 import Withdrawal from './withdrawal.model.js';
 import PaymentMethod from '../payments/paymentMethod.model.js';
-import { UserService } from './user.service/index.js';
+import { UserService } from '../users/user.service/index.js';
 import { NotFoundError, BadRequestError } from '../../common/utils/error.js';
 import { WITHDRAWAL_STATUS, PAYMENT_METHOD_STATUS } from '../../common/config/constants.js';
 
@@ -118,3 +118,4 @@ export class WithdrawalService {
     return withdrawal;
   }
 }
+
