@@ -1,4 +1,6 @@
 // src/modules/jobs/job.service.js
+// 修复：populate 字段名错误
+
 import mongoose from 'mongoose';
 import Job from './job.model.js';
 import Category from '../categories/category.model.js';
@@ -36,7 +38,8 @@ export class JobService {
         .populate('categoryL1', 'name color icon')
         .populate('categoryL2', 'name color icon')
         .populate('categoryL3', 'name color icon')
-        .populate('warehouse.id', 'name address phone')
+        // 修复：使用正确的字段名 assignedWarehouse
+        .populate('assignedWarehouse', 'name address phone')
         .sort({ sort: 1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -58,7 +61,8 @@ export class JobService {
       .populate('categoryL1', 'name color icon')
       .populate('categoryL2', 'name color icon')
       .populate('categoryL3', 'name color icon')
-      .populate('warehouse.id', 'name address phone');
+      // 修复：使用正确的字段名 assignedWarehouse
+      .populate('assignedWarehouse', 'name address phone');
     if (!job) throw new NotFoundError('商品不存在');
     await Job.findByIdAndUpdate(id, { $inc: { 'stats.viewCount': 1 } });
     return job;
@@ -67,14 +71,13 @@ export class JobService {
   static async createJob(jobData) {
     console.log('[JobService] 📝 创建回收商品...');
     
-    // 🔧 修复：兼容前端传来的字段名 (category1 -> categoryL1)
     const { 
       title, 
       subtitle, 
-      content, // 前端传的是 content
+      content,
       description,
-      category1, category2, category3, // 前端传的是 category1/2/3
-      categoryL1, categoryL2, categoryL3, // 也有可能直接传 L1/L2/L3
+      category1, category2, category3,
+      categoryL1, categoryL2, categoryL3,
       attributes, 
       images, 
       coverImage, 
@@ -87,7 +90,6 @@ export class JobService {
       authorId, 
       sort, 
       isActive,
-      // 兼容旧字段
       steps,
       contentImages,
       amountLevels,
@@ -101,7 +103,6 @@ export class JobService {
 
     if (!title) throw new BadRequestError('商品名称不能为空');
 
-    // 🔧 优先使用 L1，如果没有则使用 category1
     const finalCat1 = categoryL1 || category1;
     const finalCat2 = categoryL2 || category2;
     const finalCat3 = categoryL3 || category3;
@@ -122,9 +123,7 @@ export class JobService {
     const job = await Job.create({
       title: title.trim(),
       subtitle: subtitle?.trim(),
-      // 🔧 优先使用 description，如果没有则使用 content
       description: (description || content)?.trim(),
-      // 保存内容原文（兼容旧字段）
       content: content?.trim(),
       
       categoryL1: finalCat1 || null,
@@ -159,7 +158,6 @@ export class JobService {
       sort: sort || 0,
       isActive: isActive ?? true,
       
-      // 🆕 同步保存前端传来的旧字段，保证数据完整性
       steps: steps || [],
       contentImages: contentImages || [],
       amountLevels: amountLevels || [],
@@ -181,15 +179,12 @@ export class JobService {
     const job = await Job.findById(id);
     if (!job) throw new NotFoundError('商品不存在');
 
-    // 🔧 处理字段映射
     const updateFields = { ...updateData };
     
-    // 如果传的是 category1，映射为 categoryL1
     if (updateFields.category1) updateFields.categoryL1 = updateFields.category1;
     if (updateFields.category2) updateFields.categoryL2 = updateFields.category2;
     if (updateFields.category3) updateFields.categoryL3 = updateFields.category3;
     
-    // 如果传的是 content，映射为 description
     if (updateFields.content && !updateFields.description) {
         updateFields.description = updateFields.content;
     }
@@ -200,8 +195,8 @@ export class JobService {
       'attributes', 'images', 'coverImage',
       'pricing', 'conditionPrices', 'warehouse', 'recycleConfig',
       'status', 'isFrozen', 'isPublished', 'scheduledAt', 'endAt', 'sort', 'isActive',
-      // 允许更新旧字段
-      'steps', 'contentImages', 'amountLevels', 'totalSlots', 'deadlineHours', 'depositRequirement', 'kycRequired', 'isRepeatable'
+      'steps', 'contentImages', 'amountLevels', 'totalSlots', 'deadlineHours', 'depositRequirement', 'kycRequired', 'isRepeatable',
+      'estimatedPrice', 'estimatedPaymentHours', 'shippingMethods', 'pickupConfig', 'assignedWarehouse'
     ];
 
     for (const field of allowedFields) {
