@@ -1,4 +1,4 @@
-import { UserService } from '../user.service/index.js';
+import { UserService } from '../users/user.service/index.js';
 import { generateToken } from '../../common/middlewares/auth.js';
 import { BadRequestError, ConflictError } from '../../common/utils/error.js';
 
@@ -147,3 +147,4 @@ export class AuthService {
     return user;
   }
 }
+
