@@ -1,5 +1,5 @@
 import { success, error, paginated } from '../../common/utils/response.js';
-import { UserService } from './user.service/index.js';
+import { UserService } from '../users/user.service/index.js';
 import { asyncHandler } from '../../common/utils/asyncHandler.js';
 
 export class UserController {
@@ -465,3 +465,4 @@ export class UserController {
     return success(res, result, '获取转增流水成功');
   });
 }
+
