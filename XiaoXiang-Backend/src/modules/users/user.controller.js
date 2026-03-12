@@ -1,7 +1,7 @@
 // user.controller.js
 import { success, error, paginated } from '../../common/utils/response.js';
 import { UserService } from '../users/user.service/index.js';
-import { UserServiceProfile } from './user.service.profile.js';
+import { UserServiceProfile } from './user.service/user.service.profile.js';
 import { asyncHandler } from '../../common/utils/asyncHandler.js';
 import User from './user.model.js';
 
