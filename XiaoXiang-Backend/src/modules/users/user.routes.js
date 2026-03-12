@@ -172,4 +172,3 @@ router.post('/:id/coins/subtract',
 );
 
 export default router;
-
