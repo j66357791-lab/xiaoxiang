@@ -7,9 +7,9 @@ import mongoose from 'mongoose';
 /**
  * 团队长等级配置
  */
-// 团队长等级配置 - 按新规则
+// 团队长等级配置 - 等级从 1-6
 export const TEAM_LEADER_RANKS = {
-  0: { 
+  1: { 
     name: '大众会员', 
     needTeamValid: 0, 
     needDirectValid: 0, 
@@ -19,7 +19,7 @@ export const TEAM_LEADER_RANKS = {
     monthlyBonusRate: 0,
     yearlyBonusRate: 0,
   },
-  1: { 
+  2: { 
     name: '普通团队', 
     needTeamValid: 20, 
     needDirectValid: 0, 
@@ -29,7 +29,7 @@ export const TEAM_LEADER_RANKS = {
     monthlyBonusRate: 0,
     yearlyBonusRate: 0,
   },
-  2: { 
+  3: { 
     name: '铜牌团长', 
     needTeamValid: 200, 
     needDirectValid: 100, 
@@ -39,7 +39,7 @@ export const TEAM_LEADER_RANKS = {
     monthlyBonusRate: 0,
     yearlyBonusRate: 0,
   },
-  3: { 
+  4: { 
     name: '银牌团长', 
     needTeamValid: 500, 
     needDirectValid: 300, 
@@ -49,7 +49,7 @@ export const TEAM_LEADER_RANKS = {
     monthlyBonusRate: 0,
     yearlyBonusRate: 0,
   },
-  4: { 
+  5: { 
     name: '金牌团长', 
     needTeamValid: 2000, 
     needDirectValid: 800, 
@@ -59,7 +59,7 @@ export const TEAM_LEADER_RANKS = {
     monthlyBonusRate: 0.002, // 0.2%
     yearlyBonusRate: 0,
   },
-  5: { 
+  6: { 
     name: '钻石团长', 
     needTeamValid: 8000, 
     needDirectValid: 2000, 
@@ -79,7 +79,7 @@ export const FRIEND_ORDER_REWARDS = {
   subsequent: 1.88, // 后续每单
 };
 
-// 新人奖励配置（保持不变）
+// 新人奖励配置
 export const NEWBIE_REWARDS = {
   kyc: { name: '实名认证奖励', amount: 5 },
   notification: { name: '开启消息提醒奖励', amount: 3 },
