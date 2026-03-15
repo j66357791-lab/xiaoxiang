@@ -4,7 +4,7 @@
  */
 import { UserService } from './user.service/index.js';  // ✅ 正确
 import { UserServiceTeam } from './user.service.team.js';
-import User, { TEAM_LEADER_RANKS, NEWBIE_REWARDS } from './user.model.js';
+import User, { TEAM_LEADER_RANKS, NEWBIE_REWARDS } from './user.model.js/index.js';
 import { NotFoundError, BadRequestError } from '../../common/utils/error.js';
 import mongoose from 'mongoose';
 
