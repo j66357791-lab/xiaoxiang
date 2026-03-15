@@ -2,7 +2,7 @@
  * 用户控制器
  */
 import { UserService } from './user.service/index.js';
-import { UserServiceTeam } from './user.service.team.js/index.js';
+import { UserServiceTeam } from './user.service/user.service.team.js';
 import User, { TEAM_LEADER_RANKS, NEWBIE_REWARDS } from './user.model.js';
 import { NotFoundError, BadRequestError } from '../../common/utils/error.js';
 import mongoose from 'mongoose';
