@@ -6,6 +6,8 @@ import User from '../users/user.model.js';
 import Warehouse from '../warehouses/warehouse.model.js';
 import Coupon from '../coupons/coupon.model.js';
 import { NotFoundError, BadRequestError } from '../../common/utils/error.js';
+// ✅ 新增：导入团队服务
+import { UserServiceTeam } from '../users/user.service/user.service.team.js';
 
 export class OrderService {
   
@@ -484,6 +486,10 @@ export class OrderService {
     return order;
   }
   
+  /**
+   * ✅ 确认打款 - 订单完成
+   * 这里触发团队奖励逻辑
+   */
   static async confirmPayment(id, paymentData) {
     const order = await Order.findById(id);
     if (!order) throw new NotFoundError('订单不存在');
@@ -495,6 +501,21 @@ export class OrderService {
     order.timeline.completedAt = new Date();
     
     await order.save();
+    
+    // ✅ 触发团队奖励逻辑
+    try {
+      const orderAmount = order.pricing?.finalPrice || order.amount || 0;
+      await UserServiceTeam.processOrderRewards(
+        order.userId,      // 用户ID
+        order._id,         // 订单ID
+        orderAmount        // 订单金额
+      );
+      console.log(`[OrderService] ✅ 团队奖励处理完成，订单: ${order.orderNumber}`);
+    } catch (error) {
+      // 奖励处理失败不影响订单完成
+      console.error('[OrderService] ⚠️ 团队奖励处理失败:', error.message);
+    }
+    
     return order;
   }
 }
