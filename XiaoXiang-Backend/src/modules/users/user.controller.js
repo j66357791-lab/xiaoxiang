@@ -3,8 +3,8 @@
  * 包含：用户管理、团队管理、奖励管理等接口实现
  */
 import { UserService } from './user.service/index.js';  // ✅ 正确
-import { UserServiceTeam } from './user.service.team.js';
-import User, { TEAM_LEADER_RANKS, NEWBIE_REWARDS } from './user.model.js/index.js';
+import { UserServiceTeam } from './user.service/user.service.team.js';
+import User, { TEAM_LEADER_RANKS, NEWBIE_REWARDS } from './user.model.js';
 import { NotFoundError, BadRequestError } from '../../common/utils/error.js';
 import mongoose from 'mongoose';
 
