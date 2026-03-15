@@ -15,9 +15,6 @@ import mongoose from 'mongoose';
 export class UserServiceTeam {
   // ==================== 邀请绑定 ====================
 
-  /**
-   * 绑定邀请人 (并发安全版)
-   */
   static async bindInviter(userId, inviterId) {
     if (!inviterId) throw new BadRequestError('请提供邀请人ID');
     if (userId.toString() === inviterId.toString()) throw new BadRequestError('不能绑定自己');
@@ -48,9 +45,6 @@ export class UserServiceTeam {
     return result;
   }
 
-  /**
-   * 检测邀请关系闭环
-   */
   static async checkInviterLoop(currentUserId, targetInviterId) {
     let currentCheckingUser = await User.findById(targetInviterId);
     const maxDepth = 50;
@@ -234,10 +228,6 @@ export class UserServiceTeam {
 
   // ==================== 好友订单奖励 ====================
 
-  /**
-   * 处理好友订单奖励
-   * 首单：18.88元，第二单：8.88元，第三单：3.88元，后续：1.88元+等级加成
-   */
   static async processFriendOrderReward(inviterId, friendId, orderNumber, orderId) {
     const inviter = await User.findById(inviterId);
     if (!inviter) return;
@@ -258,7 +248,6 @@ export class UserServiceTeam {
       rewardAmount = FRIEND_ORDER_REWARDS.third;
       rewardName = '好友第三单奖励';
     } else if (orderNumber > 3) {
-      // 后续订单：基础奖励 + 团队等级加成
       const baseReward = FRIEND_ORDER_REWARDS.subsequent;
       const rankBonus = TEAM_LEADER_RANKS[inviter.agentRank]?.perOrderBonus || 0;
       rewardAmount = baseReward + rankBonus;
@@ -282,31 +271,22 @@ export class UserServiceTeam {
     }
   }
 
-  /**
-   * 处理订单完成后的奖励
-   */
   static async processOrderRewards(workerId, orderId, orderAmount) {
     const worker = await User.findById(workerId);
     if (!worker) return;
 
-    // 更新工人订单数
     const orderCount = worker.personalOrderCount + 1;
     worker.personalOrderCount = orderCount;
     await worker.save();
 
-    // 更新团队订单数
     await this._updateTeamOrderCount(workerId);
 
-    // 处理邀请人奖励
     if (worker.inviterId) {
       await this.processFriendOrderReward(worker.inviterId, workerId, orderCount, orderId);
       await this._updateTeamStats(worker.inviterId, orderAmount);
     }
   }
 
-  /**
-   * 检查并设置为有效成员
-   */
   static async _checkAndSetValidMember(userId) {
     const user = await User.findById(userId);
     if (!user || user.isValidMember) return;
@@ -320,9 +300,6 @@ export class UserServiceTeam {
     }
   }
 
-  /**
-   * 级联更新上级有效人数
-   */
   static async _updateAncestorValidCount(newValidUserId) {
     let currentUserId = newValidUserId;
     let level = 0;
@@ -345,9 +322,6 @@ export class UserServiceTeam {
     }
   }
 
-  /**
-   * 更新团队订单数
-   */
   static async _updateTeamOrderCount(workerId) {
     let currentUserId = workerId;
 
@@ -365,9 +339,6 @@ export class UserServiceTeam {
     }
   }
 
-  /**
-   * 更新团队业绩统计
-   */
   static async _updateTeamStats(inviterId, orderAmount) {
     await User.findByIdAndUpdate(inviterId, {
       $inc: {
@@ -443,6 +414,9 @@ export class UserServiceTeam {
       isValidMember: true 
     });
 
+    // ✅ 默认等级为 1（大众会员）
+    const agentRank = user.agentRank || 1;
+
     return {
       totalIncome: total,
       dailyIncome: daily,
@@ -451,8 +425,8 @@ export class UserServiceTeam {
       directCount,
       indirectCount,
       teamOrderCount: user.teamOrderCount || 0,
-      agentRank: user.agentRank || 0,
-      rankName: TEAM_LEADER_RANKS[user.agentRank || 0]?.name || '大众会员',
+      agentRank: agentRank,
+      rankName: TEAM_LEADER_RANKS[agentRank]?.name || '大众会员',
       pendingEarnings: user.pendingEarnings,
       inviteEarnings: user.inviteEarnings,
       validTeamCount: user.validTeamCount || 0,
@@ -541,22 +515,16 @@ export class UserServiceTeam {
     return users;
   }
 
-  /**
-   * 获取邀请任务信息
-   */
   static async getInviteTaskInfo(userId) {
     const user = await User.findById(userId);
     if (!user) throw new NotFoundError('用户不存在');
 
-    // 获取直推好友
     const directFriends = await User.find({ inviterId: userId })
       .select('_id name email isValidMember personalOrderCount createdAt');
 
-    // 统计数据
     const inviteCount = directFriends.length;
     const validInviteCount = directFriends.filter(f => f.isValidMember).length;
     
-    // 统计好友订单完成情况
     let firstOrderCount = 0;
     let secondOrderCount = 0;
     let thirdOrderCount = 0;
@@ -568,7 +536,6 @@ export class UserServiceTeam {
       if (orderCount >= 3) thirdOrderCount++;
     });
 
-    // 计算已获得的邀请奖励
     const inviteTransactions = await Transaction.find({
       userId: userId,
       type: { $in: ['friend_order_reward', 'invite_bonus', 'commission'] }
@@ -576,7 +543,6 @@ export class UserServiceTeam {
     
     const completedReward = inviteTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
-    // 任务列表
     const tasks = [
       {
         id: 1,
@@ -707,16 +673,18 @@ export class UserServiceTeam {
 
   /**
    * 检查升级条件
+   * ✅ 等级从 1-6
    */
   static async checkUpgradeConditions(userId) {
     const user = await User.findById(userId);
     if (!user) throw new NotFoundError('用户不存在');
 
-    const currentRank = user.agentRank || 0;
+    // ✅ 默认等级为 1
+    const currentRank = user.agentRank || 1;
     const nextRank = currentRank + 1;
 
-    // 已满级
-    if (nextRank > 5) {
+    // 已满级（6级是最高级）
+    if (nextRank > 6) {
       return {
         currentRank,
         currentRankName: TEAM_LEADER_RANKS[currentRank]?.name || '大众会员',
@@ -732,12 +700,10 @@ export class UserServiceTeam {
 
     const nextRankConfig = TEAM_LEADER_RANKS[nextRank];
     
-    // 统计数据
     const validTeamCount = user.validTeamCount || 0;
     const validDirectCount = user.validDirectCount || 0;
     const teamOrderCount = user.teamOrderCount || 0;
 
-    // 检查是否满足条件
     const teamValidMet = validTeamCount >= (nextRankConfig.needTeamValid || 0);
     const directValidMet = validDirectCount >= (nextRankConfig.needDirectValid || 0);
     const teamOrdersMet = teamOrderCount >= (nextRankConfig.needTeamOrders || 0);
@@ -786,17 +752,17 @@ export class UserServiceTeam {
     const user = await User.findById(userId);
     if (!user) throw new NotFoundError('用户不存在');
 
-    const oldRank = user.agentRank || 0;
+    const oldRank = user.agentRank || 1;
     const newRank = conditions.nextRank;
 
     user.agentRank = newRank;
     await user.save();
 
-    // 记录升级
+    // ✅ 使用 'other' 类型而不是 'rank_change'
     await this._createTransaction(
       userId,
       0,
-      'rank_upgrade',
+      'other',
       `升级为 ${TEAM_LEADER_RANKS[newRank].name}`
     );
 
@@ -815,8 +781,9 @@ export class UserServiceTeam {
   static async getTeamLeaderList(filters = {}, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
     
+    // ✅ 等级从 1 开始
     const query = {
-      agentRank: { $gte: 0 },
+      agentRank: { $gte: 1 },
       isActive: true,
       ...filters
     };
@@ -867,8 +834,9 @@ export class UserServiceTeam {
   }
 
   static async getPendingWeeklyRewards() {
+    // ✅ 金牌(5)及以上才有周奖励
     const leaders = await User.find({
-      agentRank: { $gte: 4 },
+      agentRank: { $gte: 5 },
       isActive: true,
       'teamStats.lastWeekOrderAmount': { $gt: 0 }
     }).select('name email agentRank teamStats');
@@ -891,8 +859,9 @@ export class UserServiceTeam {
   }
 
   static async getPendingMonthlyRewards() {
+    // ✅ 金牌(5)及以上才有月奖励
     const leaders = await User.find({
-      agentRank: { $gte: 4 },
+      agentRank: { $gte: 5 },
       isActive: true,
       'teamStats.lastMonthOrderAmount': { $gt: 0 }
     }).select('name email agentRank teamStats');
@@ -922,7 +891,7 @@ export class UserServiceTeam {
       if (leader) leaders.push(leader);
     } else {
       leaders = await User.find({
-        agentRank: { $gte: 4 },
+        agentRank: { $gte: 5 },
         isActive: true,
         'teamStats.lastWeekOrderAmount': { $gt: 0 }
       });
@@ -972,7 +941,7 @@ export class UserServiceTeam {
       if (leader) leaders.push(leader);
     } else {
       leaders = await User.find({
-        agentRank: { $gte: 4 },
+        agentRank: { $gte: 5 },
         isActive: true,
         'teamStats.lastMonthOrderAmount': { $gt: 0 }
       });
@@ -1019,7 +988,8 @@ export class UserServiceTeam {
 
     for (const { leaderId, amount } of rewards) {
       const leader = await User.findById(leaderId);
-      if (!leader || leader.agentRank < 5) continue;
+      // ✅ 钻石团长(6)才有年终奖励
+      if (!leader || leader.agentRank < 6) continue;
 
       if (!dryRun) {
         leader.performanceRewards = leader.performanceRewards || {};
@@ -1042,20 +1012,27 @@ export class UserServiceTeam {
     return results;
   }
 
+  /**
+   * 手动升级
+   * ✅ 等级从 1-6
+   */
   static async manualUpgradeRank(leaderId, newRank, reason = '') {
     const leader = await User.findById(leaderId);
     if (!leader) throw new NotFoundError('团队长不存在');
-    if (newRank < 0 || newRank > 5) throw new BadRequestError('等级必须在0-5之间');
-    if (newRank <= leader.agentRank) throw new BadRequestError('新等级必须高于当前等级');
+    
+    // ✅ 等级从 1-6
+    if (newRank < 1 || newRank > 6) throw new BadRequestError('等级必须在1-6之间');
+    if (newRank <= (leader.agentRank || 1)) throw new BadRequestError('新等级必须高于当前等级');
 
-    const oldRank = leader.agentRank || 0;
+    const oldRank = leader.agentRank || 1;
     leader.agentRank = newRank;
     await leader.save();
 
+    // ✅ 使用 'other' 类型
     await this._createTransaction(
       leader._id, 
       0, 
-      'rank_change', 
+      'other', 
       `管理员手动升级: ${TEAM_LEADER_RANKS[oldRank]?.name || '大众会员'} → ${TEAM_LEADER_RANKS[newRank].name}. 原因: ${reason}`
     );
 
@@ -1063,20 +1040,27 @@ export class UserServiceTeam {
     return { success: true, oldRank, newRank };
   }
 
+  /**
+   * 手动降级
+   * ✅ 等级从 1-6
+   */
   static async manualDowngradeRank(leaderId, newRank, reason = '') {
     const leader = await User.findById(leaderId);
     if (!leader) throw new NotFoundError('团队长不存在');
-    if (newRank < 0 || newRank > 5) throw new BadRequestError('等级必须在0-5之间');
-    if (newRank >= leader.agentRank) throw new BadRequestError('新等级必须低于当前等级');
+    
+    // ✅ 等级从 1-6
+    if (newRank < 1 || newRank > 6) throw new BadRequestError('等级必须在1-6之间');
+    if (newRank >= (leader.agentRank || 1)) throw new BadRequestError('新等级必须低于当前等级');
 
-    const oldRank = leader.agentRank || 0;
+    const oldRank = leader.agentRank || 1;
     leader.agentRank = newRank;
     await leader.save();
 
+    // ✅ 使用 'other' 类型
     await this._createTransaction(
       leader._id, 
       0, 
-      'rank_change', 
+      'other', 
       `管理员手动降级: ${TEAM_LEADER_RANKS[oldRank]?.name || '大众会员'} → ${TEAM_LEADER_RANKS[newRank].name}. 原因: ${reason}`
     );
 
@@ -1126,7 +1110,7 @@ export class UserServiceTeam {
     }
 
     const result = await User.updateMany(
-      { agentRank: { $gte: 0 } },
+      { agentRank: { $gte: 1 } },
       { $set: update }
     );
 
