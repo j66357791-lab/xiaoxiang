@@ -209,37 +209,40 @@ export class UserController {
     res.json({ success: true, data: result });
   }
 
-  static async manualUpgradeRank(req, res) {
-    const { id } = req.params;
-    const { newRank, reason } = req.body;
+static async manualUpgradeRank(req, res) {
+  const { id } = req.params;
+  const { newRank, reason } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestError('无效的团队长ID');
-    }
-
-    if (!newRank || newRank < 0 || newRank > 5) {
-      throw new BadRequestError('等级必须在0-5之间');
-    }
-
-    const result = await UserServiceTeam.manualUpgradeRank(id, newRank, reason || '管理员手动升级');
-    res.json({ success: true, data: result, message: '升级成功' });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new BadRequestError('无效的团队长ID');
   }
 
-  static async manualDowngradeRank(req, res) {
-    const { id } = req.params;
-    const { newRank, reason } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestError('无效的团队长ID');
-    }
-
-    if (!newRank || newRank < 0 || newRank > 5) {
-      throw new BadRequestError('等级必须在0-5之间');
-    }
-
-    const result = await UserServiceTeam.manualDowngradeRank(id, newRank, reason || '管理员手动降级');
-    res.json({ success: true, data: result, message: '降级成功' });
+  // ✅ 修改：等级从 1-6
+  if (!newRank || newRank < 1 || newRank > 6) {
+    throw new BadRequestError('等级必须在1-6之间');
   }
+
+  const result = await UserServiceTeam.manualUpgradeRank(id, newRank, reason || '管理员手动升级');
+  res.json({ success: true, data: result, message: '升级成功' });
+}
+
+static async manualDowngradeRank(req, res) {
+  const { id } = req.params;
+  const { newRank, reason } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new BadRequestError('无效的团队长ID');
+  }
+
+  // ✅ 修改：等级从 1-6
+  if (!newRank || newRank < 1 || newRank > 6) {
+    throw new BadRequestError('等级必须在1-6之间');
+  }
+
+  const result = await UserServiceTeam.manualDowngradeRank(id, newRank, reason || '管理员手动降级');
+  res.json({ success: true, data: result, message: '降级成功' });
+}
+
 
   static async recalculateTeamStats(req, res) {
     const { id } = req.params;
