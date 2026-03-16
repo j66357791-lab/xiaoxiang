@@ -16,6 +16,9 @@ import mongoose from 'mongoose';
 export class UserServiceTeam {
   // ==================== 邀请绑定 ====================
 
+  /**
+   * ✅ 修复：绑定邀请人
+   */
   static async bindInviter(userId, inviterId) {
     if (!inviterId) throw new BadRequestError('请提供邀请人ID');
     if (userId.toString() === inviterId.toString()) throw new BadRequestError('不能绑定自己');
@@ -24,26 +27,28 @@ export class UserServiceTeam {
     if (!inviter) throw new NotFoundError('邀请人不存在');
     if (!inviter.isActive) throw new BadRequestError('邀请人账号已被禁用');
 
+    // 检查是否形成闭环
     const hasLoop = await this.checkInviterLoop(userId, inviterId);
     if (hasLoop) {
       throw new BadRequestError('绑定失败：该用户是您的下级，不能形成闭环关系');
     }
 
-    const result = await User.findOneAndUpdate(
-      { _id: userId, inviterId: { $exists: false } },
-      { $set: { inviterId: inviterId } },
-      { new: true, runValidators: true }
-    );
-
-    if (!result) {
-      const exists = await User.findById(userId);
-      if (!exists) throw new NotFoundError('用户不存在');
+    // ✅ 修复：先获取用户，检查是否已绑定
+    const user = await User.findById(userId);
+    if (!user) throw new NotFoundError('用户不存在');
+    
+    // ✅ 检查 inviterId 是否有有效值
+    if (user.inviterId) {
       throw new ConflictError('您已经绑定过邀请人了，请勿重复操作');
     }
 
+    // ✅ 绑定邀请人
+    user.inviterId = inviterId;
+    await user.save();
+
     clearCache('/api/users/profile');
-    console.log(`[UserService] 用户 ${userId} 成功绑定邀请人 ${inviterId}`);
-    return result;
+    console.log(`[UserService] 用户 ${userId} 成功绑定邀请人${inviterId}`);
+    return user;
   }
 
   static async checkInviterLoop(currentUserId, targetInviterId) {
@@ -64,7 +69,6 @@ export class UserServiceTeam {
     }
     return false;
   }
-
   // ==================== 新人奖励 ====================
 
   static async grantKycReward(userId) {
