@@ -282,75 +282,86 @@ export class UserServiceTeam {
     }
   }
 
-  /**
-   * ✅ 处理好友订单奖励
-   * @param {string} inviterId - 邀请人ID
-   * @param {string} friendId - 下级用户ID
-   * @param {number} orderNumber - 这是第几单
-   * @param {string} orderId - 订单ID
-   * @param {number} orderAmount - 订单金额
-   */
-  static async processFriendOrderReward(inviterId, friendId, orderNumber, orderId, orderAmount) {
-    const inviter = await User.findById(inviterId);
-    if (!inviter) {
-      console.log(`[FriendReward] 邀请人不存在: ${inviterId}`);
-      return;
-    }
-
-    const friend = await User.findById(friendId);
-    if (!friend || !friend.inviterId || friend.inviterId.toString() !== inviterId.toString()) {
-      console.log(`[FriendReward] 邀请关系不匹配`);
-      return;
-    }
-
-    let rewardAmount = 0;
-    let rewardName = '';
-
-    // ✅ 根据订单号判断奖励金额
-    if (orderNumber === 1) {
-      rewardAmount = FRIEND_ORDER_REWARDS.first;
-      rewardName = '好友首单奖励';
-    } else if (orderNumber === 2) {
-      rewardAmount = FRIEND_ORDER_REWARDS.second;
-      rewardName = '好友第二单奖励';
-    } else if (orderNumber === 3) {
-      rewardAmount = FRIEND_ORDER_REWARDS.third;
-      rewardName = '好友第三单奖励';
-    } else if (orderNumber > 3) {
-      // 后续订单：基础奖励 + 团队等级加成
-      const baseReward = FRIEND_ORDER_REWARDS.subsequent;
-      const agentRank = inviter.agentRank || 1;
-      const rankBonus = TEAM_LEADER_RANKS[agentRank]?.perOrderBonus || 0;
-      rewardAmount = baseReward + rankBonus;
-      rewardName = `好友后续订单奖励(基础¥${baseReward}${rankBonus > 0 ? ` + 等级加成¥${rankBonus}` : ''})`;
-    }
-
-    if (rewardAmount > 0) {
-      // 更新邀请人收益
-      if (!inviter.inviteEarnings) {
-        inviter.inviteEarnings = {
-          firstOrderBonus: 0,
-          commissionEarned: 0,
-          levelBonusEarned: 0,
-          totalFromInvite: 0
-        };
-      }
-      inviter.inviteEarnings.totalFromInvite = (inviter.inviteEarnings.totalFromInvite || 0) + rewardAmount;
-      inviter.pendingEarnings = (inviter.pendingEarnings || 0) + rewardAmount;
-      await inviter.save();
-
-      // 创建交易记录
-      await this._createTransaction(
-        inviter._id,
-        rewardAmount,
-        'friend_order_reward',
-        `${rewardName} - 好友: ${friend.email || friend.name || friendId}`,
-        orderId
-      );
-
-      console.log(`[FriendReward] 邀请人 ${inviter._id} 获得${rewardName}: ¥${rewardAmount}`);
-    }
+/**
+ * ✅ 处理好友订单奖励
+ * @param {string} inviterId - 邀请人ID
+ * @param {string} friendId - 下级用户ID
+ * @param {number} orderNumber - 这是第几单
+ * @param {string} orderId - 订单ID
+ * @param {number} orderAmount - 订单金额
+ */
+static async processFriendOrderReward(inviterId, friendId, orderNumber, orderId, orderAmount) {
+  const inviter = await User.findById(inviterId);
+  if (!inviter) {
+    console.log(`[FriendReward] 邀请人不存在: ${inviterId}`);
+    return;
   }
+
+  const friend = await User.findById(friendId);
+  if (!friend || !friend.inviterId || friend.inviterId.toString() !== inviterId.toString()) {
+    console.log(`[FriendReward] 邀请关系不匹配`);
+    return;
+  }
+
+  let rewardAmount = 0;
+  let rewardName = '';
+  let rewardType = 'friend_order_reward';
+
+  // 根据订单号判断奖励金额
+  if (orderNumber === 1) {
+    rewardAmount = FRIEND_ORDER_REWARDS.first;
+    rewardName = '好友首单奖励';
+  } else if (orderNumber === 2) {
+    rewardAmount = FRIEND_ORDER_REWARDS.second;
+    rewardName = '好友第二单奖励';
+  } else if (orderNumber === 3) {
+    rewardAmount = FRIEND_ORDER_REWARDS.third;
+    rewardName = '好友第三单奖励';
+  } else if (orderNumber > 3) {
+    const baseReward = FRIEND_ORDER_REWARDS.subsequent;
+    const agentRank = inviter.agentRank || 1;
+    const rankBonus = TEAM_LEADER_RANKS[agentRank]?.perOrderBonus || 0;
+    rewardAmount = baseReward + rankBonus;
+    rewardName = `好友后续订单奖励`;
+  }
+
+  if (rewardAmount > 0) {
+    // 更新邀请人收益
+    if (!inviter.inviteEarnings) {
+      inviter.inviteEarnings = {
+        firstOrderBonus: 0,
+        commissionEarned: 0,
+        levelBonusEarned: 0,
+        totalFromInvite: 0
+      };
+    }
+    
+    // 更新首单奖金统计
+    if (orderNumber === 1) {
+      inviter.inviteEarnings.firstOrderBonus = (inviter.inviteEarnings.firstOrderBonus || 0) + rewardAmount;
+    } else {
+      inviter.inviteEarnings.commissionEarned = (inviter.inviteEarnings.commissionEarned || 0) + rewardAmount;
+    }
+    
+    inviter.inviteEarnings.totalFromInvite = (inviter.inviteEarnings.totalFromInvite || 0) + rewardAmount;
+    inviter.pendingEarnings = (inviter.pendingEarnings || 0) + rewardAmount;
+    await inviter.save();
+
+    // ✅ 修复：创建交易记录，确保 description 包含好友标识
+    const description = `${rewardName} - 好友: ${friend.email || friend.name || friendId}`;
+    
+    await this._createTransaction(
+      inviter._id,
+      rewardAmount,
+      rewardType,
+      description,
+      orderId
+    );
+
+    console.log(`[FriendReward] 邀请人 ${inviter._id} 获得${rewardName}: ¥${rewardAmount}`);
+  }
+}
+
 
   /**
    * 检查并设置为有效成员
@@ -691,36 +702,51 @@ export class UserServiceTeam {
     };
   }
 
-  static async getFriendCommissions(userId, friendId) {
-    const friend = await User.findOne({
-      _id: friendId,
-      inviterId: userId
-    });
+/**
+ * 获取好友贡献的佣金明细
+ * ✅ 修复：正确过滤该好友产生的所有奖励记录
+ */
+static async getFriendCommissions(userId, friendId) {
+  // 验证好友关系
+  const friend = await User.findOne({
+    _id: friendId,
+    inviterId: userId
+  });
 
-    if (!friend) {
-      return [];
-    }
-
-    const commissions = await Transaction.find({
-      userId: userId,
-      type: { $in: ['commission', 'invite_bonus', 'friend_order_reward'] }
-    })
-      .populate('orderId', 'orderNumber')
-      .sort({ createdAt: -1 })
-      .limit(50);
-
-    const friendCommissions = commissions.filter(t => 
-      t.description && t.description.includes(friend.email || friend.name || friendId)
-    );
-
-    return friendCommissions.map(t => ({
-      _id: t._id,
-      amount: t.amount,
-      description: t.description,
-      type: t.type,
-      createdAt: t.createdAt
-    }));
+  if (!friend) {
+    return [];
   }
+
+  // ✅ 修复：获取该好友相关的所有交易记录
+  // 包括：好友订单奖励、新人奖励等
+  const commissions = await Transaction.find({
+    userId: userId,
+    type: { $in: ['friend_order_reward', 'invite_bonus', 'commission', 'newbie_reward'] }
+  })
+    .sort({ createdAt: -1 })
+    .limit(100);
+
+  // ✅ 修复：过滤出与该好友相关的记录
+  // 通过 description 中包含好友的 email 或 id 来匹配
+  const friendEmail = friend.email || '';
+  const friendIdStr = friendId.toString();
+  
+  const friendCommissions = commissions.filter(t => {
+    const desc = t.description || '';
+    // 匹配好友邮箱或ID
+    return desc.includes(friendEmail) || 
+           desc.includes(friendIdStr) ||
+           desc.includes(friend.name || '');
+  });
+
+  return friendCommissions.map(t => ({
+    _id: t._id,
+    amount: t.amount,
+    description: t.description,
+    type: t.type,
+    createdAt: t.createdAt
+  }));
+}
 
   static async getMyCommissions(userId, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
